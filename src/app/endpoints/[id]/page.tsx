@@ -84,12 +84,10 @@ export default async function EndpointDetailPage({
         <h1 className="text-3xl font-bold mb-2">
           {endpoint.name || endpoint.id}
         </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          <code>{endpoint.destinationUrl}</code>
+        <p className="text-gray-600 dark:text-gray-400 mb-4">
+          Destination: <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{endpoint.destinationUrl}</code>
         </p>
-        <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
-          Proxy URL: <code>{endpoint.proxyUrl}</code>
-        </p>
+        <ProxyUrlDisplay proxyUrl={endpoint.proxyUrl} />
       </div>
 
       <div className="mb-6">
