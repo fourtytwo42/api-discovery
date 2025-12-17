@@ -369,9 +369,25 @@ function injectApiInterceptor(html: string, endpointId: string): string {
     if (typeof url === 'string' && !url.startsWith('http://') && !url.startsWith('https://')) {
       const relativePath = url.startsWith('/') ? url : '/' + url;
       proxiedUrl = proxyBase + relativePath;
-      logApiCall(proxiedUrl, method, null, {});
+      // Only log non-asset and non-Cloudflare requests
+      const urlLower = url.toLowerCase();
+      const isAsset = /\.(css|js|woff|woff2|ttf|eot|otf|png|jpg|jpeg|gif|svg|ico|webp|mp4|mp3|pdf|map)$/i.test(urlLower);
+      const isCloudflare = urlLower.includes('/cdn-cgi/') ||
+                           urlLower.includes('cloudflare') ||
+                           urlLower.includes('cf-');
+      if (!isAsset && !isCloudflare) {
+        logApiCall(proxiedUrl, method, null, {});
+      }
     } else {
-      logApiCall(url, method, null, {});
+      // Only log non-asset and non-Cloudflare requests for absolute URLs
+      const urlLower = url.toLowerCase();
+      const isAsset = /\.(css|js|woff|woff2|ttf|eot|otf|png|jpg|jpeg|gif|svg|ico|webp|mp4|mp3|pdf|map)$/i.test(urlLower);
+      const isCloudflare = urlLower.includes('/cdn-cgi/') ||
+                           urlLower.includes('cloudflare') ||
+                           urlLower.includes('cf-');
+      if (!isAsset && !isCloudflare) {
+        logApiCall(url, method, null, {});
+      }
     }
     
     this._url = proxiedUrl;
