@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Card from '@/components/ui/card';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 interface ApiCall {
   id: string;
@@ -9,10 +10,19 @@ interface ApiCall {
   url: string;
   responseStatus: number | null;
   duration: number | null;
-  timestamp: Date;
+  timestamp: string;
   requestHeaders: Record<string, string> | null;
   requestBody: string | null;
   responseBody: string | null;
+}
+
+interface ApiCallGroup {
+  pattern: string;
+  count: number;
+  calls: ApiCall[];
+  avgDuration: number | null;
+  mostCommonStatus: number | null;
+  lastCall: string;
 }
 
 interface ApiCallListProps {
@@ -20,9 +30,11 @@ interface ApiCallListProps {
 }
 
 export default function ApiCallList({ endpointId }: ApiCallListProps) {
-  const [apiCalls, setApiCalls] = useState<ApiCall[]>([]);
+  const [grouped, setGrouped] = useState<ApiCallGroup[]>([]);
+  const [totalCalls, setTotalCalls] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   const fetchApiCalls = async () => {
     try {
@@ -31,7 +43,8 @@ export default function ApiCallList({ endpointId }: ApiCallListProps) {
         throw new Error('Failed to fetch API calls');
       }
       const data = await response.json();
-      setApiCalls(data.apiCalls || []);
+      setGrouped(data.grouped || []);
+      setTotalCalls(data.totalCalls || 0);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load API calls');
@@ -46,6 +59,16 @@ export default function ApiCallList({ endpointId }: ApiCallListProps) {
     const interval = setInterval(fetchApiCalls, 2000);
     return () => clearInterval(interval);
   }, [endpointId]);
+
+  const toggleGroup = (pattern: string) => {
+    const newExpanded = new Set(expandedGroups);
+    if (newExpanded.has(pattern)) {
+      newExpanded.delete(pattern);
+    } else {
+      newExpanded.add(pattern);
+    }
+    setExpandedGroups(newExpanded);
+  };
 
   if (loading) {
     return (
@@ -67,7 +90,7 @@ export default function ApiCallList({ endpointId }: ApiCallListProps) {
     );
   }
 
-  if (apiCalls.length === 0) {
+  if (grouped.length === 0) {
     return (
       <Card title="API Calls">
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">
@@ -104,79 +127,133 @@ export default function ApiCallList({ endpointId }: ApiCallListProps) {
   };
 
   return (
-    <Card title={`API Calls (${apiCalls.length})`}>
-      <div className="space-y-4">
-        {apiCalls.map((call) => (
-          <div
-            key={call.id}
-            className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          >
-            <div className="flex items-start justify-between mb-2">
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <span
-                  className={`px-2 py-1 rounded text-xs font-semibold ${getMethodColor(call.method)}`}
-                >
-                  {call.method}
-                </span>
-                <code className="text-sm text-gray-700 dark:text-gray-300 truncate flex-1">
-                  {call.url}
-                </code>
-              </div>
-              {call.responseStatus && (
-                <span
-                  className={`text-sm font-semibold ${getStatusColor(call.responseStatus)}`}
-                >
-                  {call.responseStatus}
-                </span>
-              )}
-            </div>
-            
-            <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 mt-2">
-              <span>
-                {new Date(call.timestamp).toLocaleString()}
-              </span>
-              {call.duration !== null && (
-                <span>{call.duration}ms</span>
-              )}
-            </div>
+    <Card title={`API Endpoints (${grouped.length} unique, ${totalCalls} total calls)`}>
+      <div className="space-y-2">
+        {grouped.map((group) => {
+          const isExpanded = expandedGroups.has(group.pattern);
+          const [method, ...pathParts] = group.pattern.split(' ');
+          const path = pathParts.join(' ');
 
-            {(call.requestBody || call.responseBody) && (
-              <details className="mt-3">
-                <summary className="text-sm text-gray-600 dark:text-gray-400 cursor-pointer hover:text-gray-800 dark:hover:text-gray-200">
-                  View Details
-                </summary>
-                <div className="mt-2 space-y-2">
-                  {call.requestBody && (
-                    <div>
-                      <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
-                        Request Body:
-                      </div>
-                      <pre className="bg-gray-100 dark:bg-gray-900 p-2 rounded text-xs overflow-x-auto">
-                        {call.requestBody.length > 500
-                          ? call.requestBody.substring(0, 500) + '... [truncated]'
-                          : call.requestBody}
-                      </pre>
-                    </div>
-                  )}
-                  {call.responseBody && (
-                    <div>
-                      <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
-                        Response Body:
-                      </div>
-                      <pre className="bg-gray-100 dark:bg-gray-900 p-2 rounded text-xs overflow-x-auto">
-                        {call.responseBody.length > 500
-                          ? call.responseBody.substring(0, 500) + '... [truncated]'
-                          : call.responseBody}
-                      </pre>
-                    </div>
-                  )}
+          return (
+            <div
+              key={group.pattern}
+              className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
+            >
+              {/* Group Header */}
+              <button
+                onClick={() => toggleGroup(group.pattern)}
+                className="w-full p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    {isExpanded ? (
+                      <ChevronDown className="h-5 w-5 text-gray-500 flex-shrink-0" />
+                    ) : (
+                      <ChevronRight className="h-5 w-5 text-gray-500 flex-shrink-0" />
+                    )}
+                    <span
+                      className={`px-2 py-1 rounded text-xs font-semibold ${getMethodColor(method)}`}
+                    >
+                      {method}
+                    </span>
+                    <code className="text-sm text-gray-700 dark:text-gray-300 truncate flex-1">
+                      {path}
+                    </code>
+                  </div>
+                  <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400 flex-shrink-0">
+                    <span className="font-semibold">{group.count} calls</span>
+                    {group.mostCommonStatus && (
+                      <span className={getStatusColor(group.mostCommonStatus)}>
+                        {group.mostCommonStatus}
+                      </span>
+                    )}
+                    {group.avgDuration !== null && (
+                      <span>~{group.avgDuration}ms avg</span>
+                    )}
+                  </div>
                 </div>
-              </details>
-            )}
-          </div>
-        ))}
+              </button>
+
+              {/* Expanded Calls List */}
+              {isExpanded && (
+                <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                  <div className="p-2 space-y-2 max-h-96 overflow-y-auto">
+                    {group.calls.map((call) => (
+                      <div
+                        key={call.id}
+                        className="border border-gray-200 dark:border-gray-700 rounded p-3 bg-white dark:bg-gray-800"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <span
+                              className={`px-2 py-1 rounded text-xs font-semibold ${getMethodColor(call.method)}`}
+                            >
+                              {call.method}
+                            </span>
+                            <code className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1">
+                              {call.url}
+                            </code>
+                          </div>
+                          {call.responseStatus && (
+                            <span
+                              className={`text-sm font-semibold ${getStatusColor(call.responseStatus)}`}
+                            >
+                              {call.responseStatus}
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 mt-2">
+                          <span>
+                            {new Date(call.timestamp).toLocaleString()}
+                          </span>
+                          {call.duration !== null && (
+                            <span>{call.duration}ms</span>
+                          )}
+                        </div>
+
+                        {(call.requestBody || call.responseBody) && (
+                          <details className="mt-3">
+                            <summary className="text-xs text-gray-600 dark:text-gray-400 cursor-pointer hover:text-gray-800 dark:hover:text-gray-200">
+                              View Details
+                            </summary>
+                            <div className="mt-2 space-y-2">
+                              {call.requestBody && (
+                                <div>
+                                  <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                    Request Body:
+                                  </div>
+                                  <pre className="bg-gray-100 dark:bg-gray-900 p-2 rounded text-xs overflow-x-auto">
+                                    {call.requestBody.length > 500
+                                      ? call.requestBody.substring(0, 500) + '... [truncated]'
+                                      : call.requestBody}
+                                  </pre>
+                                </div>
+                              )}
+                              {call.responseBody && (
+                                <div>
+                                  <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                    Response Body:
+                                  </div>
+                                  <pre className="bg-gray-100 dark:bg-gray-900 p-2 rounded text-xs overflow-x-auto">
+                                    {call.responseBody.length > 500
+                                      ? call.responseBody.substring(0, 500) + '... [truncated]'
+                                      : call.responseBody}
+                                  </pre>
+                                </div>
+                              )}
+                            </div>
+                          </details>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </Card>
   );
 }
-
