@@ -332,7 +332,8 @@ function injectApiInterceptor(html: string, endpointId: string): string {
   
   // Intercept fetch
   const originalFetch = window.fetch;
-  window.fetch = function(url, options = {}) {
+  window.fetch = function(url, options) {
+    if (!options) options = {};
     let proxiedUrl = url;
     if (typeof url === 'string') {
       if (url.startsWith('http://') || url.startsWith('https://')) {
