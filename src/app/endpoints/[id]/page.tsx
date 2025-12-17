@@ -91,11 +91,16 @@ export default async function EndpointDetailPage({
         <ProxyUrlDisplay proxyUrl={endpoint.proxyUrl} />
       </div>
 
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold mb-4">Documentation</h2>
-        <DocumentationViewer endpointId={id} />
-      </div>
-    </div>
-  );
-}
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold mb-4">API Calls</h2>
+            <ApiCallList endpointId={id} />
+          </div>
+
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold mb-4">Documentation</h2>
+            <DocumentationViewer endpointId={id} />
+          </div>
+        </div>
+      );
+    }
 
