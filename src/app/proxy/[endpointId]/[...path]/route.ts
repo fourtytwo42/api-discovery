@@ -137,7 +137,7 @@ async function handleProxyRequest(
           protocol: targetUrlObj.protocol.replace(':', ''),
           requestHeaders: capturedRequest.headers,
           requestBody: requestBody?.substring(0, 50000), // Truncate if too large
-          requestBodyJson: requestBodyJson ? (requestBodyJson as Record<string, unknown>) : undefined,
+          requestBodyJson: requestBodyJson ? (requestBodyJson as unknown) : undefined,
           queryParams: capturedRequest.queryParams,
           responseStatus: response.status,
           responseHeaders: responseHeaders,
