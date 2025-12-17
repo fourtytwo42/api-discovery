@@ -184,6 +184,32 @@ function rewriteHtmlUrls(html: string, destinationBase: string, proxyBase: strin
     }
   );
 
+  // Rewrite WebSocket URLs (ws:// and wss://)
+  html = html.replace(
+    new RegExp(`(ws://|wss://)(${escapeRegex(destinationOrigin.replace(/^https?:/, ''))})([^"']*)`, 'gi'),
+    (match, protocol, origin, path) => {
+      // Convert to our WebSocket proxy URL
+      // Extract endpointId from proxyBase (format: /proxy/[endpointId])
+      const endpointId = proxyBase.replace('/proxy/', '');
+      const wsHost = typeof window !== 'undefined' 
+        ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`
+        : 'ws://localhost:3001';
+      return `${wsHost}/ws-proxy${path}?endpointId=${endpointId}`;
+    }
+  );
+
+  // Also rewrite in JavaScript code (new WebSocket(...))
+  html = html.replace(
+    new RegExp(`(new\\s+WebSocket\\s*\\(\\s*["'])(ws://|wss://)(${escapeRegex(destinationOrigin.replace(/^https?:/, ''))})([^"']*)(["'])`, 'gi'),
+    (match, prefix, protocol, origin, path, suffix) => {
+      const endpointId = proxyBase.replace('/proxy/', '');
+      const wsHost = typeof window !== 'undefined'
+        ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`
+        : 'ws://localhost:3001';
+      return `${prefix}${wsHost}/ws-proxy${path}?endpointId=${endpointId}${suffix}`;
+    }
+  );
+
   return html;
 }
 
