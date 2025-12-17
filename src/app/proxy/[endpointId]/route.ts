@@ -422,7 +422,7 @@ function injectApiInterceptor(html: string, endpointId: string): string {
   console.log('[API Discovery Proxy] Installing WebSocket interceptor, original WebSocket:', originalWebSocket);
   
   // Create a wrapper function that intercepts all WebSocket creation
-  const WebSocketProxy = function(this: any, url: string | URL, protocols?: string | string[]) {
+  const WebSocketProxy = function(url, protocols) {
     console.log('[API Discovery Proxy] WebSocket constructor called:', url, protocols, 'type:', typeof url);
     
     try {
@@ -516,23 +516,23 @@ function injectApiInterceptor(html: string, endpointId: string): string {
       console.error('[API Discovery Proxy] Failed to proxy WebSocket URL:', e, 'url:', url, 'stack:', e instanceof Error ? e.stack : 'no stack');
       // Fall back to original if rewriting fails
       try {
-        return new originalWebSocket(url as any, protocols);
+        return new originalWebSocket(url, protocols);
       } catch (fallbackError) {
         console.error('[API Discovery Proxy] Fallback WebSocket creation also failed:', fallbackError);
         throw fallbackError;
       }
     }
-  } as any;
+  };
   
   // Preserve WebSocket static properties and prototype
   Object.setPrototypeOf(WebSocketProxy, originalWebSocket);
   Object.setPrototypeOf(WebSocketProxy.prototype, originalWebSocket.prototype);
   
   // Copy static properties
-  Object.getOwnPropertyNames(originalWebSocket).forEach(prop => {
+  Object.getOwnPropertyNames(originalWebSocket).forEach(function(prop) {
     if (prop !== 'prototype' && prop !== 'length' && prop !== 'name') {
       try {
-        (WebSocketProxy as any)[prop] = (originalWebSocket as any)[prop];
+        WebSocketProxy[prop] = originalWebSocket[prop];
       } catch (e) {
         // Ignore read-only properties
       }
@@ -540,7 +540,7 @@ function injectApiInterceptor(html: string, endpointId: string): string {
   });
   
   // Replace window.WebSocket
-  window.WebSocket = WebSocketProxy as any;
+  window.WebSocket = WebSocketProxy;
   
   console.log('[API Discovery Proxy] WebSocket interceptor installed successfully, window.WebSocket:', window.WebSocket);
   
