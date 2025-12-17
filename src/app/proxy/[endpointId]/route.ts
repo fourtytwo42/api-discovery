@@ -63,8 +63,21 @@ export async function GET(
         const proxyBase = `/proxy/${endpointId}`;
         const destinationBase = new URL(endpoint.destinationUrl).origin;
         
+        // Inject base tag to make relative URLs resolve through proxy
+        // This ensures favicon.ico, logo.png, etc. are requested through the proxy
+        const baseTag = `<base href="${proxyBase}/">`;
+        let htmlWithBase = html;
+        if (html.includes('<head>')) {
+          htmlWithBase = html.replace('<head>', `<head>${baseTag}`);
+        } else if (html.includes('<html>')) {
+          htmlWithBase = html.replace('<html>', `<html><head>${baseTag}</head>`);
+        } else {
+          // If no head tag, prepend it
+          htmlWithBase = `<head>${baseTag}</head>${html}`;
+        }
+        
         // Rewrite URLs in HTML
-        const rewrittenHtml = rewriteHtmlUrls(html, destinationBase, proxyBase);
+        const rewrittenHtml = rewriteHtmlUrls(htmlWithBase, destinationBase, proxyBase);
 
         // Inject JavaScript to intercept API calls
         const injectedHtml = injectApiInterceptor(rewrittenHtml, endpointId);
