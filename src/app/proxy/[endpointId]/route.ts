@@ -152,6 +152,36 @@ function rewriteHtmlUrls(html: string, destinationBase: string, proxyBase: strin
     }
   );
 
+  // Rewrite favicon links (various formats)
+  html = html.replace(
+    /(<link[^>]*rel=["'](?:shortcut\s+)?icon["'][^>]*href=["'])(\/[^"']*)(["'])/gi,
+    (match, prefix, path, suffix) => {
+      if (path.startsWith('/proxy/') || path.startsWith('http://') || path.startsWith('https://') || path.startsWith('//')) {
+        return match;
+      }
+      return `${prefix}${proxyBase}${path}${suffix}`;
+    }
+  );
+  
+  // Rewrite favicon in absolute URLs
+  html = html.replace(
+    new RegExp(`(<link[^>]*rel=["'](?:shortcut\\s+)?icon["'][^>]*href=["'])(${escapeRegex(destinationOrigin)})([^"']*)(["'])`, 'gi'),
+    (match, prefix, origin, path, suffix) => {
+      return `${prefix}${proxyBase}${path}${suffix}`;
+    }
+  );
+  
+  // Rewrite apple-touch-icon and other icon types
+  html = html.replace(
+    /(<link[^>]*rel=["'][^"']*icon[^"']*["'][^>]*href=["'])(\/[^"']*)(["'])/gi,
+    (match, prefix, path, suffix) => {
+      if (path.startsWith('/proxy/') || path.startsWith('http://') || path.startsWith('https://') || path.startsWith('//')) {
+        return match;
+      }
+      return `${prefix}${proxyBase}${path}${suffix}`;
+    }
+  );
+
   // Rewrite URLs in style attributes
   html = html.replace(
     new RegExp(`(style=["'][^"']*url\\(["']?)(${escapeRegex(destinationOrigin)})([^"']*)(["']?\\))`, 'gi'),
