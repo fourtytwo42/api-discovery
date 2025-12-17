@@ -96,8 +96,8 @@ export async function POST(request: NextRequest) {
         })(),
         responseStatus: null, // Response not available from client-side log
         responseHeaders: {},
-        responseBody: null,
-        responseBodyJson: null,
+        responseBody: undefined,
+        responseBodyJson: undefined,
         duration: 0,
         timestamp: timestamp ? new Date(timestamp) : new Date()
       },
