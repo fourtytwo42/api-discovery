@@ -490,10 +490,10 @@ function injectApiInterceptor(html: string, endpointId: string): string {
       const ws = new originalWebSocket(proxiedUrl, protocols);
       
       // Log WebSocket events for debugging
-      ws.addEventListener('open', () => {
+      ws.addEventListener('open', function() {
         console.log('[API Discovery Proxy] WebSocket opened successfully:', proxiedUrl, 'target:', targetUrl);
       });
-      ws.addEventListener('error', (e) => {
+      ws.addEventListener('error', function(e) {
         console.error('[API Discovery Proxy] WebSocket error:', e, 'proxiedUrl:', proxiedUrl, 'target:', targetUrl);
         console.error('[API Discovery Proxy] WebSocket error details:', {
           readyState: ws.readyState,
@@ -501,12 +501,12 @@ function injectApiInterceptor(html: string, endpointId: string): string {
           protocol: ws.protocol,
         });
       });
-      ws.addEventListener('close', (e) => {
+      ws.addEventListener('close', function(e) {
         console.log('[API Discovery Proxy] WebSocket closed:', {
           code: e.code,
           reason: e.reason,
           wasClean: e.wasClean,
-          proxiedUrl,
+          proxiedUrl: proxiedUrl,
           target: targetUrl,
         });
       });
