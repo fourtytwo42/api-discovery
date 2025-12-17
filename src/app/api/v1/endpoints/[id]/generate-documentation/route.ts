@@ -331,26 +331,30 @@ export async function POST(
         });
 
         const currentVersion = existingDoc?.version || '1.0.0';
+        // Always create new documentation (allow multiple versions)
+        // Find the highest version number for this endpoint+discoveredEndpoint combination
+        const existingDocs = await prisma.endpointDocumentation.findMany({
+          where: {
+            endpointId,
+            discoveredEndpointId: discoveredEndpoint.id,
+          },
+          orderBy: { version: 'desc' },
+          take: 1,
+        });
+
+        const currentVersion = existingDocs.length > 0 
+          ? existingDocs[0].version 
+          : '0.0';
         const newVersion = (parseFloat(currentVersion) + 0.1).toFixed(1);
 
-        // Store documentation
-        await prisma.endpointDocumentation.upsert({
-          where: {
-            endpointId_discoveredEndpointId: {
-              endpointId,
-              discoveredEndpointId: discoveredEndpoint.id,
-            },
-          },
-          create: {
+        // Create new documentation (don't update existing)
+        await prisma.endpointDocumentation.create({
+          data: {
             endpointId,
             discoveredEndpointId: discoveredEndpoint.id,
             markdown: result.documentation,
             openApiSpec: null,
             typescriptTypes: null,
-            version: '1.0.0',
-          },
-          update: {
-            markdown: result.documentation,
             version: newVersion,
           },
         });

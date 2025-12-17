@@ -17,16 +17,12 @@ export async function GET(
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     const format = searchParams.get('format') || 'markdown';
+    const docId = searchParams.get('docId');
 
     // Verify endpoint exists and user owns it
     const endpoint = await prisma.endpoint.findUnique({
       where: { id },
-      include: {
-        endpointDocs: {
-          take: 1,
-          orderBy: { generatedAt: 'desc' },
-        },
-      },
+      select: { id: true, userId: true },
     });
 
     if (!endpoint) {
@@ -37,14 +33,30 @@ export async function GET(
       throw new AuthorizationError('Not authorized to export this documentation');
     }
 
-    if (endpoint.endpointDocs.length === 0) {
+    // Get specific documentation or latest
+    let doc;
+    if (docId) {
+      doc = await prisma.endpointDocumentation.findFirst({
+        where: {
+          id: docId,
+          endpointId: id,
+        },
+      });
+    } else {
+      const docs = await prisma.endpointDocumentation.findMany({
+        where: { endpointId: id },
+        orderBy: { generatedAt: 'desc' },
+        take: 1,
+      });
+      doc = docs[0];
+    }
+
+    if (!doc) {
       return NextResponse.json(
-        { error: 'Documentation not generated yet' },
+        { error: 'Documentation not found' },
         { status: 404 }
       );
     }
-
-    const doc = endpoint.endpointDocs[0];
 
     // Return appropriate format
     if (format === 'markdown') {
@@ -56,26 +68,16 @@ export async function GET(
       });
     }
 
-    if (format === 'openapi' || format === 'json') {
-      return new NextResponse(doc.openApiSpec || '{}', {
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Disposition': `attachment; filename="api-docs-${id}.json"`,
-        },
-      });
-    }
-
-    if (format === 'typescript' || format === 'ts') {
-      return new NextResponse(doc.typescriptTypes || '', {
-        headers: {
-          'Content-Type': 'text/typescript',
-          'Content-Disposition': `attachment; filename="api-types-${id}.ts"`,
-        },
-      });
+    if (format === 'pdf') {
+      // PDF export will be handled client-side
+      return NextResponse.json(
+        { error: 'PDF export must be done client-side' },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json(
-      { error: 'Invalid format. Use: markdown, openapi, or typescript' },
+      { error: 'Invalid format. Use: markdown or pdf' },
       { status: 400 }
     );
   } catch (error) {

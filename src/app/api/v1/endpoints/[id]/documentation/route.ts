@@ -132,8 +132,15 @@ export async function GET(
       where: { id },
       include: {
         endpointDocs: {
-          take: 1,
           orderBy: { generatedAt: 'desc' },
+          include: {
+            endpoint: {
+              select: {
+                name: true,
+                destinationUrl: true,
+              },
+            },
+          },
         },
       },
     });
@@ -146,15 +153,8 @@ export async function GET(
       throw new AuthorizationError('Not authorized to view this documentation');
     }
 
-    if (endpoint.endpointDocs.length === 0) {
-      return NextResponse.json(
-        { error: 'Documentation not generated yet' },
-        { status: 404 }
-      );
-    }
-
     return NextResponse.json({
-      documentation: endpoint.endpointDocs[0],
+      documentation: endpoint.endpointDocs,
     });
   } catch (error) {
     if (error instanceof NotFoundError || error instanceof AuthorizationError) {
