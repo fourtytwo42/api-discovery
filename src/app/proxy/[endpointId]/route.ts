@@ -111,33 +111,111 @@ export async function GET(
 }
 
 function rewriteHtmlUrls(html: string, destinationBase: string, proxyBase: string): string {
-  // Rewrite absolute URLs
+  const destinationOrigin = new URL(destinationBase).origin;
+  
+  // Rewrite absolute URLs in href attributes
   html = html.replace(
-    new RegExp(`href=["'](${escapeRegex(destinationBase)}[^"']*)["']`, 'gi'),
-    (match, url) => {
-      const relativePath = url.replace(destinationBase, '');
-      return `href="${proxyBase}${relativePath}"`;
+    new RegExp(`(href=["'])(${escapeRegex(destinationOrigin)})([^"']*)(["'])`, 'gi'),
+    (match, prefix, origin, path, suffix) => {
+      return `${prefix}${proxyBase}${path}${suffix}`;
+    }
+  );
+
+  // Rewrite absolute URLs in src attributes
+  html = html.replace(
+    new RegExp(`(src=["'])(${escapeRegex(destinationOrigin)})([^"']*)(["'])`, 'gi'),
+    (match, prefix, origin, path, suffix) => {
+      return `${prefix}${proxyBase}${path}${suffix}`;
+    }
+  );
+
+  // Rewrite relative URLs (starting with /)
+  html = html.replace(
+    /(href=["'])(\/[^"']*)(["'])/gi,
+    (match, prefix, path, suffix) => {
+      // Skip if it's already a proxy URL or external URL
+      if (path.startsWith('/proxy/') || path.startsWith('http://') || path.startsWith('https://') || path.startsWith('//')) {
+        return match;
+      }
+      return `${prefix}${proxyBase}${path}${suffix}`;
     }
   );
 
   html = html.replace(
-    new RegExp(`src=["'](${escapeRegex(destinationBase)}[^"']*)["']`, 'gi'),
-    (match, url) => {
-      const relativePath = url.replace(destinationBase, '');
-      return `src="${proxyBase}${relativePath}"`;
+    /(src=["'])(\/[^"']*)(["'])/gi,
+    (match, prefix, path, suffix) => {
+      // Skip if it's already a proxy URL or external URL
+      if (path.startsWith('/proxy/') || path.startsWith('http://') || path.startsWith('https://') || path.startsWith('//')) {
+        return match;
+      }
+      return `${prefix}${proxyBase}${path}${suffix}`;
     }
   );
 
-  // Rewrite fetch/API URLs in script tags (basic)
+  // Rewrite URLs in style attributes
   html = html.replace(
-    new RegExp(`fetch\\(["'](${escapeRegex(destinationBase)}[^"']*)["']`, 'gi'),
-    (match, url) => {
-      const relativePath = url.replace(destinationBase, '');
-      return `fetch("${proxyBase}${relativePath}"`;
+    new RegExp(`(style=["'][^"']*url\\(["']?)(${escapeRegex(destinationOrigin)})([^"']*)(["']?\\))`, 'gi'),
+    (match, prefix, origin, path, suffix) => {
+      return `${prefix}${proxyBase}${path}${suffix}`;
+    }
+  );
+
+  // Rewrite URLs in CSS @import
+  html = html.replace(
+    new RegExp(`(@import\\s+["'])(${escapeRegex(destinationOrigin)})([^"']*)(["'])`, 'gi'),
+    (match, prefix, origin, path, suffix) => {
+      return `${prefix}${proxyBase}${path}${suffix}`;
+    }
+  );
+
+  // Rewrite fetch/API URLs in script tags
+  html = html.replace(
+    new RegExp(`(fetch\\(["'])(${escapeRegex(destinationOrigin)})([^"']*)(["'])`, 'gi'),
+    (match, prefix, origin, path, suffix) => {
+      return `${prefix}${proxyBase}${path}${suffix}`;
+    }
+  );
+
+  // Rewrite XMLHttpRequest URLs
+  html = html.replace(
+    new RegExp(`(open\\(["'])(GET|POST|PUT|DELETE|PATCH)["'],\\s*["'](${escapeRegex(destinationOrigin)})([^"']*)(["'])`, 'gi'),
+    (match, prefix, method, origin, path, suffix) => {
+      return `${prefix}${method}", "${proxyBase}${path}${suffix}`;
     }
   );
 
   return html;
+}
+
+function rewriteCssUrls(css: string, destinationOrigin: string, proxyBase: string): string {
+  // Rewrite URLs in url() functions
+  css = css.replace(
+    new RegExp(`(url\\(["']?)(${escapeRegex(destinationOrigin)})([^"']*)(["']?\\))`, 'gi'),
+    (match, prefix, origin, path, suffix) => {
+      return `${prefix}${proxyBase}${path}${suffix}`;
+    }
+  );
+
+  // Rewrite relative URLs in url()
+  css = css.replace(
+    /(url\\(["']?)(\/[^"']*)(["']?\\))/gi,
+    (match, prefix, path, suffix) => {
+      if (path.startsWith('/proxy/') || path.startsWith('http://') || path.startsWith('https://') || path.startsWith('//') || path.startsWith('data:')) {
+        return match;
+      }
+      return `${prefix}${proxyBase}${path}${suffix}`;
+    }
+  );
+
+  // Rewrite @import URLs
+  css = css.replace(
+    new RegExp(`(@import\\s+["'])(${escapeRegex(destinationOrigin)})([^"']*)(["'])`, 'gi'),
+    (match, prefix, origin, path, suffix) => {
+      return `${prefix}${proxyBase}${path}${suffix}`;
+    }
+  );
+
+  return css;
 }
 
 function escapeRegex(str: string): string {
