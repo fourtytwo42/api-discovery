@@ -426,7 +426,7 @@ function injectApiInterceptor(html: string, endpointId: string): string {
     console.log('[API Discovery Proxy] WebSocket constructor called:', url, protocols, 'type:', typeof url);
     
     try {
-      let targetUrl: string;
+      let targetUrl;
       
       // Handle both string URLs and URL objects
       if (typeof url === 'string') {
