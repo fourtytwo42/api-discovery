@@ -47,7 +47,7 @@ export default function ProxyUrlDisplay({ proxyUrl }: ProxyUrlDisplayProps) {
   return (
     <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
       <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
-        🔗 Proxy URL (Use this to make API calls):
+        🔗 Proxy URL (Visit this to view the proxied site):
       </p>
       <div className="flex items-center gap-2 flex-wrap">
         <code className="bg-white dark:bg-gray-800 px-3 py-2 rounded border border-blue-200 dark:border-blue-700 text-sm font-mono flex-1 min-w-0 break-all">
@@ -64,11 +64,11 @@ export default function ProxyUrlDisplay({ proxyUrl }: ProxyUrlDisplayProps) {
       </div>
       <div className="mt-3 space-y-2">
         <p className="text-xs text-blue-700 dark:text-blue-300">
-          <strong>How to use:</strong> Replace your API base URL with this proxy URL. All requests will be logged and analyzed.
+          <strong>How to use:</strong> Visit this URL in your browser to view the proxied site. All API interactions will be automatically logged and analyzed.
         </p>
         <div className="text-xs text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/40 p-2 rounded">
-          <strong>Example:</strong> If your app calls <code className="bg-white dark:bg-gray-800 px-1 rounded">https://pump.investments/api/users</code>, 
-          use <code className="bg-white dark:bg-gray-800 px-1 rounded">{fullUrl}/api/users</code> instead.
+          <strong>Simply visit:</strong> <code className="bg-white dark:bg-gray-800 px-1 rounded">{fullUrl}</code> in your browser and interact with the site normally. 
+          All API calls, WebSocket connections, and network requests will be captured automatically.
         </div>
       </div>
     </div>
