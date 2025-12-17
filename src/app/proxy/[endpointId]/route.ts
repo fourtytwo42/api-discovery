@@ -80,7 +80,14 @@ export async function GET(
         const rewrittenHtml = rewriteHtmlUrls(htmlWithBase, destinationBase, proxyBase);
 
         // Inject JavaScript to intercept API calls
-        const injectedHtml = injectApiInterceptor(rewrittenHtml, endpointId);
+        // Add a small inline script first to ensure interceptor runs immediately
+        const immediateScript = `<script>
+          console.log('[API Discovery Proxy] Interceptor script loading...');
+          if (typeof window !== 'undefined') {
+            console.log('[API Discovery Proxy] Window available, ready to intercept');
+          }
+        </script>`;
+        const injectedHtml = injectApiInterceptor(immediateScript + rewrittenHtml, endpointId);
 
         const nextResponse = new NextResponse(injectedHtml, {
           status: response.status,
