@@ -173,7 +173,9 @@ async function handleProxyRequest(
 
       // Return response with correct body type
       if (isBinary || isAsset) {
-        return new NextResponse(responseBody as ArrayBuffer, {
+        // Convert ArrayBuffer to Buffer for NextResponse
+        const buffer = Buffer.from(responseBody as ArrayBuffer);
+        return new NextResponse(buffer, {
           status: response.status,
           headers: filteredHeaders,
         });
