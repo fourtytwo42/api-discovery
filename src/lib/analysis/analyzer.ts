@@ -126,7 +126,7 @@ export async function saveAnalysisResults(
         authType: endpoint.patterns.authType || null,
         paginationType: endpoint.patterns.paginationType || null,
         apiType: endpoint.patterns.apiType || null,
-        corsConfig: endpoint.patterns.corsConfig ? (endpoint.patterns.corsConfig as Prisma.InputJsonValue) : null,
+        corsConfig: endpoint.patterns.corsConfig ? (endpoint.patterns.corsConfig as Prisma.InputJsonValue) : undefined,
       },
     });
   }
