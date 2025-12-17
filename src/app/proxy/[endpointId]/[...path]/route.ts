@@ -105,24 +105,32 @@ async function handleProxyRequest(
         responseHeaders[key] = value;
       });
 
-      // Capture API call
+      // Capture API call - read request body before it's consumed
+      let requestBody: string | undefined;
+      let requestBodyJson: unknown;
+      if (method !== 'GET' && method !== 'HEAD') {
+        try {
+          // Clone request to read body
+          const clonedRequest = request.clone();
+          requestBody = await clonedRequest.text();
+          if (requestBody) {
+            try {
+              requestBodyJson = JSON.parse(requestBody);
+            } catch {
+              requestBodyJson = undefined;
+            }
+          }
+        } catch {
+          requestBodyJson = undefined;
+        }
+      }
+
       const capturedRequest = {
         method,
         url: targetUrl,
         headers: Object.fromEntries(request.headers.entries()),
         queryParams: Object.fromEntries(request.nextUrl.searchParams.entries()),
       };
-
-      let requestBody: string | undefined;
-      let requestBodyJson: unknown;
-      if (method !== 'GET' && method !== 'HEAD') {
-        try {
-          requestBody = await request.text();
-          requestBodyJson = JSON.parse(requestBody);
-        } catch {
-          requestBodyJson = undefined;
-        }
-      }
 
       let responseBodyJson: unknown;
       try {
