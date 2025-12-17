@@ -74,8 +74,7 @@ export default function LoginForm() {
       }
 
       // Redirect to dashboard
-      router.push('/dashboard');
-      router.refresh();
+      window.location.href = '/dashboard';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
