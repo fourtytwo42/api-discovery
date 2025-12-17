@@ -1,6 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import React from 'react';
+import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
+import remarkGfm from 'remark-gfm';
 import Card from '@/components/ui/card';
 import Button from '@/components/ui/button';
 
@@ -132,10 +136,55 @@ export default function DocumentationViewer({ endpointId }: DocumentationViewerP
 
       <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
         {activeTab === 'markdown' && (
-          <div className="prose dark:prose-invert max-w-none">
-            <pre className="whitespace-pre-wrap bg-gray-50 dark:bg-gray-900 p-4 rounded-md overflow-x-auto">
-              {documentation.markdown || 'No markdown documentation available'}
-            </pre>
+          <div className="prose dark:prose-invert max-w-none prose-headings:text-gray-900 dark:prose-headings:text-gray-100 prose-p:text-gray-700 dark:prose-p:text-gray-300 prose-code:text-blue-600 dark:prose-code:text-blue-400 prose-pre:bg-gray-100 dark:prose-pre:bg-gray-900 prose-pre:border prose-pre:border-gray-200 dark:prose-pre:border-gray-700">
+            {documentation.markdown ? (
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeRaw]}
+                components={{
+                  // Customize code blocks
+                  code: (props: any) => {
+                    const { inline, className, children } = props;
+                    const match = /language-(\w+)/.exec(className || '');
+                    return !inline && match ? (
+                      <pre className="bg-gray-100 dark:bg-gray-900 p-4 rounded-md overflow-x-auto border border-gray-200 dark:border-gray-700">
+                        <code className={className} {...props}>
+                          {children}
+                        </code>
+                      </pre>
+                    ) : (
+                      <code className="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-sm" {...props}>
+                        {children}
+                      </code>
+                    );
+                  },
+                  // Allow HTML tags like <br>
+                  br: () => <br />,
+                  // Customize tables
+                  table: (props: any) => (
+                    <div className="overflow-x-auto my-4">
+                      <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-600" {...props}>
+                        {props.children}
+                      </table>
+                    </div>
+                  ),
+                  th: (props: any) => (
+                    <th className="border border-gray-300 dark:border-gray-600 px-4 py-2 bg-gray-100 dark:bg-gray-800 font-semibold text-left" {...props}>
+                      {props.children}
+                    </th>
+                  ),
+                  td: (props: any) => (
+                    <td className="border border-gray-300 dark:border-gray-600 px-4 py-2" {...props}>
+                      {props.children}
+                    </td>
+                  ),
+                }}
+              >
+                {documentation.markdown}
+              </ReactMarkdown>
+            ) : (
+              <div className="text-gray-500 dark:text-gray-400">No markdown documentation available</div>
+            )}
           </div>
         )}
 
