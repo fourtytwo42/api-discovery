@@ -15,13 +15,44 @@ interface ApiCall {
   responseBody: string | null;
 }
 
+interface UrlParameterVariation {
+  parameter: string;
+  position: number;
+  values: Array<{
+    value: string;
+    count: number;
+    exampleUrl: string;
+  }>;
+}
+
+interface QueryParameterVariation {
+  name: string;
+  values: Array<{
+    value: string;
+    count: number;
+    exampleUrl: string;
+  }>;
+}
+
+interface PayloadVariation {
+  payload: string;
+  count: number;
+  exampleUrl: string;
+  exampleTimestamp: string;
+}
+
 interface ApiCallGroup {
   pattern: string;
+  method: string;
+  patternPath: string;
   count: number;
   calls: ApiCall[];
   avgDuration: number | null;
   mostCommonStatus: number | null;
   lastCall: string;
+  urlParameterVariations?: UrlParameterVariation[];
+  queryParameterVariations?: QueryParameterVariation[];
+  payloadVariations?: PayloadVariation[];
 }
 
 interface ApiCallListProps {
@@ -243,79 +274,161 @@ export default function ApiCallList({ endpointId, onSelectionChange }: ApiCallLi
                 </button>
               </div>
 
-              {/* Expanded Calls List */}
+              {/* Expanded Details */}
               {isExpanded && (
                 <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-                  <div className="p-2 space-y-2 max-h-96 overflow-y-auto">
-                    {group.calls.map((call) => (
-                      <div
-                        key={call.id}
-                        className="border border-gray-200 dark:border-gray-700 rounded p-3 bg-white dark:bg-gray-800"
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <span
-                              className={`px-2 py-1 rounded text-xs font-semibold ${getMethodColor(call.method)}`}
+                  <div className="p-4 space-y-4">
+                    {/* URL Parameter Variations */}
+                    {group.urlParameterVariations && group.urlParameterVariations.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                          URL Parameters
+                        </h4>
+                        <div className="space-y-3">
+                          {group.urlParameterVariations.map((param) => (
+                            <div
+                              key={param.parameter}
+                              className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700"
                             >
-                              {call.method}
-                            </span>
-                            <code className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1">
-                              {call.url}
-                            </code>
-                          </div>
-                          {call.responseStatus && (
-                            <span
-                              className={`text-sm font-semibold ${getStatusColor(call.responseStatus)}`}
-                            >
-                              {call.responseStatus}
-                            </span>
-                          )}
-                        </div>
-                        
-                        <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 mt-2">
-                          <span>
-                            {new Date(call.timestamp).toLocaleString()}
-                          </span>
-                          {call.duration !== null && (
-                            <span>{call.duration}ms</span>
-                          )}
-                        </div>
-
-                        {(call.requestBody || call.responseBody) && (
-                          <details className="mt-3">
-                            <summary className="text-xs text-gray-600 dark:text-gray-400 cursor-pointer hover:text-gray-800 dark:hover:text-gray-200">
-                              View Details
-                            </summary>
-                            <div className="mt-2 space-y-2">
-                              {call.requestBody && (
-                                <div>
-                                  <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
-                                    Request Body:
+                              <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
+                                <code className="text-blue-600 dark:text-blue-400">:{param.parameter}</code>
+                                {' '}({param.values.length} unique value{param.values.length !== 1 ? 's' : ''})
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {param.values.slice(0, 10).map((val, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="bg-gray-100 dark:bg-gray-700 rounded px-2 py-1 text-xs"
+                                  >
+                                    <code className="text-gray-700 dark:text-gray-300">{val.value}</code>
+                                    <span className="text-gray-500 dark:text-gray-400 ml-1">
+                                      ({val.count}x)
+                                    </span>
                                   </div>
-                                  <pre className="bg-gray-100 dark:bg-gray-900 p-2 rounded text-xs overflow-x-auto">
-                                    {call.requestBody.length > 500
-                                      ? call.requestBody.substring(0, 500) + '... [truncated]'
-                                      : call.requestBody}
-                                  </pre>
-                                </div>
-                              )}
-                              {call.responseBody && (
-                                <div>
-                                  <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
-                                    Response Body:
+                                ))}
+                                {param.values.length > 10 && (
+                                  <div className="text-xs text-gray-500 dark:text-gray-400 px-2 py-1">
+                                    +{param.values.length - 10} more
                                   </div>
-                                  <pre className="bg-gray-100 dark:bg-gray-900 p-2 rounded text-xs overflow-x-auto">
-                                    {call.responseBody.length > 500
-                                      ? call.responseBody.substring(0, 500) + '... [truncated]'
-                                      : call.responseBody}
-                                  </pre>
-                                </div>
-                              )}
+                                )}
+                              </div>
                             </div>
-                          </details>
-                        )}
+                          ))}
+                        </div>
                       </div>
-                    ))}
+                    )}
+
+                    {/* Query Parameter Variations */}
+                    {group.queryParameterVariations && group.queryParameterVariations.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                          Query Parameters
+                        </h4>
+                        <div className="space-y-3">
+                          {group.queryParameterVariations.map((param) => (
+                            <div
+                              key={param.name}
+                              className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700"
+                            >
+                              <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
+                                <code className="text-blue-600 dark:text-blue-400">{param.name}</code>
+                                {' '}({param.values.length} unique value{param.values.length !== 1 ? 's' : ''})
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {param.values.slice(0, 10).map((val, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="bg-gray-100 dark:bg-gray-700 rounded px-2 py-1 text-xs"
+                                  >
+                                    <code className="text-gray-700 dark:text-gray-300">{val.value}</code>
+                                    <span className="text-gray-500 dark:text-gray-400 ml-1">
+                                      ({val.count}x)
+                                    </span>
+                                  </div>
+                                ))}
+                                {param.values.length > 10 && (
+                                  <div className="text-xs text-gray-500 dark:text-gray-400 px-2 py-1">
+                                    +{param.values.length - 10} more
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Payload Variations */}
+                    {group.payloadVariations && group.payloadVariations.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                          Request Payloads ({group.payloadVariations.length} unique)
+                        </h4>
+                        <div className="space-y-3">
+                          {group.payloadVariations.slice(0, 5).map((payload, idx) => (
+                            <div
+                              key={idx}
+                              className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700"
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                                  Used {payload.count} time{payload.count !== 1 ? 's' : ''}
+                                </span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                  {new Date(payload.exampleTimestamp).toLocaleString()}
+                                </span>
+                              </div>
+                              <pre className="bg-gray-100 dark:bg-gray-900 p-2 rounded text-xs overflow-x-auto max-h-48 overflow-y-auto">
+                                {payload.payload.length > 1000
+                                  ? payload.payload.substring(0, 1000) + '\n... [truncated]'
+                                  : payload.payload}
+                              </pre>
+                            </div>
+                          ))}
+                          {group.payloadVariations.length > 5 && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-2">
+                              +{group.payloadVariations.length - 5} more payload variation{group.payloadVariations.length - 5 !== 1 ? 's' : ''}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Individual Calls (if no variations or for reference) */}
+                    {(!group.urlParameterVariations || group.urlParameterVariations.length === 0) &&
+                     (!group.queryParameterVariations || group.queryParameterVariations.length === 0) &&
+                     (!group.payloadVariations || group.payloadVariations.length === 0) && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                          Recent Calls
+                        </h4>
+                        <div className="space-y-2 max-h-96 overflow-y-auto">
+                          {group.calls.slice(0, 10).map((call) => (
+                            <div
+                              key={call.id}
+                              className="border border-gray-200 dark:border-gray-700 rounded p-3 bg-white dark:bg-gray-800"
+                            >
+                              <div className="flex items-start justify-between mb-2">
+                                <code className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1">
+                                  {call.url}
+                                </code>
+                                {call.responseStatus && (
+                                  <span
+                                    className={`text-sm font-semibold ${getStatusColor(call.responseStatus)}`}
+                                  >
+                                    {call.responseStatus}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                                <span>{new Date(call.timestamp).toLocaleString()}</span>
+                                {call.duration !== null && <span>{call.duration}ms</span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

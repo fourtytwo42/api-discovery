@@ -3,7 +3,12 @@ import { prisma } from '@/lib/database/prisma';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/jwt';
 import { NotFoundError, handleError } from '@/lib/utils/errors';
-import { extractEndpointPattern } from '@/lib/proxy/pattern-extraction';
+import { extractEndpointPattern, normalizeUrlPattern } from '@/lib/proxy/pattern-extraction';
+import {
+  groupUrlParameterVariations,
+  groupQueryParameterVariations,
+  groupPayloadVariations,
+} from '@/lib/analysis/url-parameter-extraction';
 
 export async function GET(
   request: NextRequest,
@@ -76,7 +81,10 @@ export async function GET(
         timestamp: true,
         requestHeaders: true,
         requestBody: true,
+        requestBodyJson: true,
+        queryParams: true,
         responseBody: true,
+        responseBodyJson: true,
       },
     });
 
@@ -91,7 +99,7 @@ export async function GET(
       groupedCalls.get(pattern)!.push(call);
     });
 
-    // Convert to array format with grouping info
+    // Convert to array format with grouping info and variations
     const grouped = Array.from(groupedCalls.entries()).map(([pattern, calls]) => {
       // Sort calls by timestamp (most recent first)
       const sortedCalls = calls.sort((a, b) => 
@@ -116,8 +124,47 @@ export async function GET(
       const mostCommonStatus = Array.from(statusCounts.entries())
         .sort((a, b) => b[1] - a[1])[0]?.[0] || null;
 
+      // Extract pattern path (remove method)
+      const [method, ...pathParts] = pattern.split(' ');
+      const patternPath = pathParts.join(' ');
+
+      // Extract URL parameter variations
+      // Use normalizeUrlPattern to get the pattern path for comparison
+      const urlParamVariations = groupUrlParameterVariations(
+        sortedCalls.map(call => {
+          const normalized = normalizeUrlPattern(call.url);
+          return {
+            url: call.url,
+            pattern: normalized,
+          };
+        })
+      );
+
+      // Extract query parameter variations
+      const queryParamVariations = groupQueryParameterVariations(
+        sortedCalls.map(call => ({
+          url: call.url,
+          queryParams: call.queryParams as Record<string, unknown> | null,
+        }))
+      );
+
+      // Extract payload variations (only for methods that typically have bodies)
+      const hasPayload = ['POST', 'PUT', 'PATCH'].includes(method.toUpperCase());
+      const payloadVariations = hasPayload
+        ? groupPayloadVariations(
+            sortedCalls.map(call => ({
+              url: call.url,
+              requestBody: call.requestBody,
+              requestBodyJson: call.requestBodyJson,
+              timestamp: call.timestamp,
+            }))
+          )
+        : [];
+
       return {
         pattern,
+        method,
+        patternPath,
         count: calls.length,
         calls: sortedCalls.map((call) => ({
           ...call,
@@ -126,6 +173,9 @@ export async function GET(
         avgDuration,
         mostCommonStatus,
         lastCall: sortedCalls[0].timestamp.toISOString(),
+        urlParameterVariations: urlParamVariations,
+        queryParameterVariations: queryParamVariations,
+        payloadVariations: payloadVariations,
       };
     });
 
