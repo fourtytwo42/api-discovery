@@ -2,23 +2,68 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Input from '@/components/ui/input';
+import Button from '@/components/ui/button';
+import Card from '@/components/ui/card';
+
+interface SeedAccount {
+  email: string;
+  password: string;
+  label: string;
+  type: 'admin' | 'user' | 'demo';
+}
+
+const SEED_ACCOUNTS: SeedAccount[] = [
+  {
+    email: 'admin@api-discovery.com',
+    password: 'admin123',
+    label: '👑 Admin',
+    type: 'admin',
+  },
+  {
+    email: 'user@example.com',
+    password: 'user123',
+    label: '👤 Regular User',
+    type: 'user',
+  },
+  {
+    email: 'demo1@example.com',
+    password: 'demo123',
+    label: '🎮 Demo 1',
+    type: 'demo',
+  },
+  {
+    email: 'demo2@example.com',
+    password: 'demo123',
+    label: '🎮 Demo 2',
+    type: 'demo',
+  },
+  {
+    email: 'demo3@example.com',
+    password: 'demo123',
+    label: '🎮 Demo 3',
+    type: 'demo',
+  },
+];
 
 export default function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
+    setError(null);
 
     try {
       const response = await fetch('/api/v1/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ email, password }),
       });
 
@@ -28,6 +73,7 @@ export default function LoginForm() {
         throw new Error(data.error || 'Login failed');
       }
 
+      // Redirect to dashboard
       router.push('/dashboard');
       router.refresh();
     } catch (err) {
@@ -37,60 +83,69 @@ export default function LoginForm() {
     }
   };
 
+  const handleSeedAccountClick = (account: SeedAccount) => {
+    setEmail(account.email);
+    setPassword(account.password);
+    setError(null);
+  };
+
   return (
-    <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-      {error && (
-        <div className="rounded-md bg-red-50 p-4 text-sm text-red-800 dark:bg-red-900 dark:text-red-200">
-          {error}
-        </div>
-      )}
-      <div className="space-y-4">
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Email address
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-primary dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-          />
-        </div>
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Password
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-primary dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-          />
-        </div>
-      </div>
+    <Card title="Sign In">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="bg-error/10 text-error p-3 rounded-md text-sm">
+            {error}
+          </div>
+        )}
 
-      <div>
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-md bg-primary px-4 py-2 text-white hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50"
-        >
-          {loading ? 'Signing in...' : 'Sign in'}
-        </button>
-      </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Quick Login (Click to fill)
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+            {SEED_ACCOUNTS.map((account) => (
+              <button
+                key={account.email}
+                type="button"
+                onClick={() => handleSeedAccountClick(account)}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors text-left ${
+                  email === account.email
+                    ? 'bg-primary text-white'
+                    : account.type === 'admin'
+                    ? 'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 hover:bg-purple-200 dark:hover:bg-purple-800'
+                    : account.type === 'demo'
+                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+              >
+                {account.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
-      <div className="text-center text-sm">
-        <a href="/register" className="font-medium text-primary hover:text-primary-dark">
-          Don't have an account? Register
-        </a>
-      </div>
-    </form>
+        <Input
+          label="Email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          placeholder="your@email.com"
+        />
+
+        <Input
+          label="Password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          placeholder="••••••••"
+        />
+
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading ? 'Signing in...' : 'Sign In'}
+        </Button>
+      </form>
+    </Card>
   );
 }
-
