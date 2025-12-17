@@ -1,17 +1,58 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import DocumentationViewer from '@/components/documentation/DocumentationViewer';
 import Button from '@/components/ui/button';
 import Link from 'next/link';
+import { cookies } from 'next/headers';
+import { prisma } from '@/lib/database/prisma';
+import { verifyToken } from '@/lib/auth/jwt';
 
 async function getEndpoint(id: string) {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/v1/endpoints/${id}`, {
-      cache: 'no-store',
+    const cookieStore = await cookies();
+    const token = cookieStore.get('token');
+    
+    if (!token) {
+      redirect('/login');
+    }
+
+    // Verify token and get user
+    let user;
+    try {
+      const payload = verifyToken(token.value);
+      user = await prisma.user.findUnique({
+        where: { id: payload.userId },
+        select: { id: true, role: true },
+      });
+    } catch {
+      redirect('/login');
+    }
+
+    if (!user) {
+      redirect('/login');
+    }
+
+    // Fetch endpoint
+    const endpoint = await prisma.endpoint.findUnique({
+      where: { id },
+      include: {
+        apiCalls: {
+          take: 10,
+          orderBy: { timestamp: 'desc' },
+        },
+        discoveredEndpoints: true,
+      },
     });
-    if (!response.ok) {
+
+    if (!endpoint) {
       return null;
     }
-    return await response.json();
+
+    // Check authorization
+    if (endpoint.userId !== user.id && user.role !== 'ADMIN') {
+      return null;
+    }
+
+    return { endpoint };
   } catch {
     return null;
   }
