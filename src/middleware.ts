@@ -16,6 +16,31 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
+  // Handle root-level image/asset requests - check if user has an active proxy session
+  // Look for common image/asset file extensions at root level
+  const isRootAsset = /^\/([^/]+\.(png|jpg|jpeg|gif|svg|ico|webp|css|js|woff|woff2|ttf|eot|otf|mp4|mp3|pdf|map))(\?.*)?$/i.test(pathname);
+  
+  if (isRootAsset && token) {
+    // Check if there's a referer header pointing to a proxy URL
+    const referer = request.headers.get('referer');
+    if (referer) {
+      try {
+        const refererUrl = new URL(referer);
+        const refererPath = refererUrl.pathname;
+        // Extract endpointId from referer if it's a proxy URL
+        const proxyMatch = refererPath.match(/^\/proxy\/([^/]+)/);
+        if (proxyMatch) {
+          const endpointId = proxyMatch[1];
+          // Redirect to proxy path
+          const assetPath = pathname + (request.nextUrl.search || '');
+          return NextResponse.redirect(new URL(`/proxy/${endpointId}${assetPath}`, request.url));
+        }
+      } catch (e) {
+        // Invalid referer URL, continue normally
+      }
+    }
+  }
+
   // If no token and trying to access protected route, redirect to login
   if (!token && !isPublicRoute) {
     if (pathname.startsWith('/api/')) {
