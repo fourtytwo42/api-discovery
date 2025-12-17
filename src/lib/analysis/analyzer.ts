@@ -8,8 +8,8 @@ export interface AnalysisResult {
   discoveredEndpoints: Array<{
     pattern: string;
     methods: string[];
-    requestSchema?: unknown;
-    responseSchemas?: Record<string, unknown>;
+    requestSchema?: Prisma.InputJsonValue;
+    responseSchemas?: Prisma.InputJsonValue;
     patterns: ApiPatterns;
   }>;
 }
@@ -54,7 +54,7 @@ export async function analyzeEndpoint(endpointId: string): Promise<AnalysisResul
     // Infer request schema
     const requestBodies = patternCalls
       .map((call) => call.requestBodyJson)
-      .filter((body): body is unknown => body !== null && body !== undefined);
+      .filter((body) => body !== null && body !== undefined) as unknown[];
     const requestSchema = requestBodies.length > 0 ? inferSchema(requestBodies) : undefined;
 
     // Infer response schemas by status code
@@ -120,8 +120,8 @@ export async function saveAnalysisResults(
         endpointId,
         pattern: endpoint.pattern,
         methods: endpoint.methods,
-        requestSchema: endpoint.requestSchema as Prisma.InputJsonValue | undefined,
-        responseSchemas: endpoint.responseSchemas as Prisma.InputJsonValue | undefined,
+        requestSchema: endpoint.requestSchema || undefined,
+        responseSchemas: endpoint.responseSchemas || undefined,
         authRequired: endpoint.patterns.authRequired,
         authType: endpoint.patterns.authType || null,
         paginationType: endpoint.patterns.paginationType || null,
@@ -137,4 +137,3 @@ export async function saveAnalysisResults(
     data: { processedAt: new Date() },
   });
 }
-
