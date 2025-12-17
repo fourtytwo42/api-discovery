@@ -339,13 +339,17 @@ function injectApiInterceptor(html: string, endpointId: string): string {
 </script>
 `;
 
-  // Inject before closing </body> or at end of <head>
-  if (html.includes('</body>')) {
-    return html.replace('</body>', interceptorScript + '</body>');
-  } else if (html.includes('</head>')) {
+  // Inject as early as possible - in <head> before any scripts run
+  // This ensures our interceptor is set up before the page's JavaScript executes
+  if (html.includes('</head>')) {
     return html.replace('</head>', interceptorScript + '</head>');
+  } else if (html.includes('<head>')) {
+    return html.replace('<head>', '<head>' + interceptorScript);
+  } else if (html.includes('</body>')) {
+    return html.replace('</body>', interceptorScript + '</body>');
   } else {
-    return html + interceptorScript;
+    // If no head or body, prepend to HTML
+    return interceptorScript + html;
   }
 }
 
