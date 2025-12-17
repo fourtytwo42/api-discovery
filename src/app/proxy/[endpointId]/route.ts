@@ -356,15 +356,28 @@ function injectApiInterceptor(html: string, endpointId: string): string {
   
   function logApiCall(url, method, body, headers) {
     try {
-      // Truncate body if it's too large (max 10KB for logging)
+      // Skip logging for asset requests to reduce memory usage
+      const urlLower = (url || '').toLowerCase();
+      const isAsset = /\.(css|js|woff|woff2|ttf|eot|otf|png|jpg|jpeg|gif|svg|ico|webp|mp4|mp3|pdf|map|woff2)$/i.test(urlLower) ||
+                      urlLower.includes('/_next/') ||
+                      urlLower.includes('/static/') ||
+                      urlLower.includes('/assets/') ||
+                      urlLower.includes('/images/') ||
+                      urlLower.includes('/fonts/');
+      
+      if (isAsset) {
+        return; // Skip logging assets
+      }
+      
+      // Truncate body if it's too large (max 5KB for logging to reduce memory)
       let truncatedBody = body;
-      if (typeof body === 'string' && body.length > 10000) {
-        truncatedBody = body.substring(0, 10000) + '... [truncated]';
+      if (typeof body === 'string' && body.length > 5000) {
+        truncatedBody = body.substring(0, 5000) + '... [truncated]';
       } else if (body && typeof body === 'object') {
         try {
           const bodyStr = JSON.stringify(body);
-          if (bodyStr.length > 10000) {
-            truncatedBody = bodyStr.substring(0, 10000) + '... [truncated]';
+          if (bodyStr.length > 5000) {
+            truncatedBody = bodyStr.substring(0, 5000) + '... [truncated]';
           } else {
             truncatedBody = bodyStr;
           }
@@ -374,20 +387,20 @@ function injectApiInterceptor(html: string, endpointId: string): string {
         }
       }
       
-      // Truncate headers if needed
+      // Truncate headers if needed (max 2KB)
       let truncatedHeaders = headers;
       if (headers && typeof headers === 'object') {
         try {
           const headersStr = JSON.stringify(headers);
-          if (headersStr.length > 5000) {
-            truncatedHeaders = JSON.parse(headersStr.substring(0, 5000) + '... [truncated]');
+          if (headersStr.length > 2000) {
+            truncatedHeaders = JSON.parse(headersStr.substring(0, 2000) + '... [truncated]');
           }
         } catch (e) {
           truncatedHeaders = {};
         }
       }
       
-      // Send to our API to log the call
+      // Send to our API to log the call (fire and forget, don't wait)
       fetch('/api/v1/proxy/log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -398,10 +411,11 @@ function injectApiInterceptor(html: string, endpointId: string): string {
           body: truncatedBody,
           headers: truncatedHeaders,
           timestamp: new Date().toISOString()
-        })
-      }).catch(err => {
+        }),
+        // Don't wait for response to avoid blocking
+        keepalive: true
+      }).catch(() => {
         // Silently fail - don't log errors to avoid infinite loops
-        // console.error would trigger logApiCall again
       });
     } catch (err) {
       // Silently fail - don't log errors to avoid infinite loops
