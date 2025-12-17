@@ -76,10 +76,13 @@ async function handleProxyRequest(
     const targetPath = pathSegments.length > 0 ? `/${pathSegments.join('/')}` : '';
     const queryString = request.nextUrl.search;
     
-    // If destination URL ends with /, don't add extra /
-    const baseUrl = endpoint.destinationUrl.endsWith('/') 
-      ? endpoint.destinationUrl.slice(0, -1) 
-      : endpoint.destinationUrl;
+    // Normalize destination URL (remove trailing slash)
+    let baseUrl = endpoint.destinationUrl.trim();
+    if (baseUrl.endsWith('/')) {
+      baseUrl = baseUrl.slice(0, -1);
+    }
+    
+    // Construct target URL
     const targetUrl = `${baseUrl}${targetPath}${queryString}`;
 
     // Update last used timestamp
@@ -158,29 +161,60 @@ async function handleProxyRequest(
         },
       });
 
+      // Filter response headers (remove problematic ones)
+      const filteredHeaders: Record<string, string> = {};
+      Object.entries(responseHeaders).forEach(([key, value]) => {
+        const lowerKey = key.toLowerCase();
+        // Don't forward these headers
+        if (!['content-encoding', 'transfer-encoding', 'connection', 'upgrade', 'keep-alive'].includes(lowerKey)) {
+          filteredHeaders[key] = value;
+        }
+      });
+
       // Return response
       return new NextResponse(responseBody, {
         status: response.status,
-        headers: responseHeaders,
+        headers: filteredHeaders,
       });
     } catch (fetchError) {
-      // Store error as API call
-      await prisma.apiCall.create({
-        data: {
-          endpointId,
-          method,
-          url: targetUrl,
-          protocol: targetUrlObj.protocol.replace(':', ''),
-          requestHeaders: Object.fromEntries(request.headers.entries()),
-          responseStatus: 500,
-          responseHeaders: {},
-          responseBody: fetchError instanceof Error ? fetchError.message : 'Proxy error',
-          duration: Date.now() - startTime,
-        },
+      // Log the error for debugging
+      console.error('Proxy fetch error:', {
+        endpointId,
+        targetUrl,
+        method,
+        error: fetchError instanceof Error ? fetchError.message : 'Unknown error',
+        stack: fetchError instanceof Error ? fetchError.stack : undefined,
       });
 
+      // Store error as API call (only for non-asset requests to avoid spam)
+      const isAssetRequest = /\.(css|js|woff|woff2|ttf|eot|png|jpg|jpeg|gif|svg|ico|webp)$/i.test(targetPath);
+      if (!isAssetRequest) {
+        try {
+          await prisma.apiCall.create({
+            data: {
+              endpointId,
+              method,
+              url: targetUrl,
+              protocol: targetUrlObj.protocol.replace(':', ''),
+              requestHeaders: Object.fromEntries(request.headers.entries()),
+              responseStatus: 502,
+              responseHeaders: {},
+              responseBody: fetchError instanceof Error ? fetchError.message : 'Proxy error',
+              duration: Date.now() - startTime,
+            },
+          });
+        } catch (dbError) {
+          // Ignore DB errors for failed requests
+          console.error('Failed to log API call error:', dbError);
+        }
+      }
+
       return NextResponse.json(
-        { error: 'Proxy request failed', details: fetchError instanceof Error ? fetchError.message : 'Unknown error' },
+        { 
+          error: 'Proxy request failed', 
+          details: fetchError instanceof Error ? fetchError.message : 'Unknown error',
+          url: targetUrl,
+        },
         { status: 502 }
       );
     }
