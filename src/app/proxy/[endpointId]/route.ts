@@ -370,9 +370,12 @@ function injectApiInterceptor(html: string, endpointId: string): string {
   const originalOpen = XMLHttpRequest.prototype.open;
   const originalSend = XMLHttpRequest.prototype.send;
   
-  XMLHttpRequest.prototype.open = function(method, url, ...args) {
+  XMLHttpRequest.prototype.open = function(method, url) {
     this._method = method;
     this._originalUrl = url;
+    
+    // Get additional arguments (async, user, password) if provided
+    var args = Array.prototype.slice.call(arguments, 2);
     
     // Rewrite relative URLs to go through proxy
     let proxiedUrl = url;
@@ -401,7 +404,8 @@ function injectApiInterceptor(html: string, endpointId: string): string {
     }
     
     this._url = proxiedUrl;
-    return originalOpen.apply(this, [method, proxiedUrl, ...args]);
+    // Call originalOpen with method, proxiedUrl, and any additional arguments
+    return originalOpen.apply(this, [method, proxiedUrl].concat(args));
   };
   
   XMLHttpRequest.prototype.send = function(body) {
