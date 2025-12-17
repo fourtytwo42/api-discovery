@@ -319,18 +319,6 @@ export async function POST(
           },
         });
 
-        // Get existing documentation to increment version
-        const existingDoc = await prisma.endpointDocumentation.findUnique({
-          where: {
-            endpointId_discoveredEndpointId: {
-              endpointId,
-              discoveredEndpointId: discoveredEndpoint.id,
-            },
-          },
-          select: { version: true },
-        });
-
-        const currentVersion = existingDoc?.version || '1.0.0';
         // Always create new documentation (allow multiple versions)
         // Find the highest version number for this endpoint+discoveredEndpoint combination
         const existingDocsForPattern = await prisma.endpointDocumentation.findMany({
