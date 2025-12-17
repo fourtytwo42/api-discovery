@@ -352,19 +352,57 @@ function injectApiInterceptor(html: string, endpointId: string): string {
   console.log('[API Discovery Proxy] WebSocket interceptor installed successfully');
   
   function logApiCall(url, method, body, headers) {
-    // Send to our API to log the call
-    fetch('/api/v1/proxy/log', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        endpointId: endpointId,
-        url: url,
-        method: method,
-        body: body,
-        headers: headers,
-        timestamp: new Date().toISOString()
-      })
-    }).catch(err => console.error('Failed to log API call:', err));
+    try {
+      // Truncate body if it's too large (max 10KB for logging)
+      let truncatedBody = body;
+      if (typeof body === 'string' && body.length > 10000) {
+        truncatedBody = body.substring(0, 10000) + '... [truncated]';
+      } else if (body && typeof body === 'object') {
+        try {
+          const bodyStr = JSON.stringify(body);
+          if (bodyStr.length > 10000) {
+            truncatedBody = bodyStr.substring(0, 10000) + '... [truncated]';
+          } else {
+            truncatedBody = bodyStr;
+          }
+        } catch (e) {
+          // If stringify fails (circular reference, too large, etc.), skip body
+          truncatedBody = '[body too large or invalid to serialize]';
+        }
+      }
+      
+      // Truncate headers if needed
+      let truncatedHeaders = headers;
+      if (headers && typeof headers === 'object') {
+        try {
+          const headersStr = JSON.stringify(headers);
+          if (headersStr.length > 5000) {
+            truncatedHeaders = JSON.parse(headersStr.substring(0, 5000) + '... [truncated]');
+          }
+        } catch (e) {
+          truncatedHeaders = {};
+        }
+      }
+      
+      // Send to our API to log the call
+      fetch('/api/v1/proxy/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          endpointId: endpointId,
+          url: url,
+          method: method,
+          body: truncatedBody,
+          headers: truncatedHeaders,
+          timestamp: new Date().toISOString()
+        })
+      }).catch(err => {
+        // Silently fail - don't log errors to avoid infinite loops
+        // console.error would trigger logApiCall again
+      });
+    } catch (err) {
+      // Silently fail - don't log errors to avoid infinite loops
+    }
   }
 })();
 </script>
