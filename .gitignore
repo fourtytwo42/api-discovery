@@ -5,10 +5,13 @@ node_modules/
 
 # Testing
 /coverage
+*.lcov
+.nyc_output
 
 # Next.js
 /.next/
 /out/
+/.swc/
 
 # Production
 /build
@@ -58,4 +61,12 @@ logs
 # Temporary files
 tmp/
 temp/
+
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+
+# Prisma
+/prisma/migrations/
 

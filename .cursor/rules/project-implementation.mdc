@@ -1,0 +1,1040 @@
+---
+description: Guidelines for AI assistants when building/implementing projects using project documentation
+globs: **/*
+alwaysApply: true
+---
+# Project Implementation Guide
+
+**CRITICAL:** When a user asks you to build or implement a project, you MUST first locate and read the project documentation. The documentation contains all specifications, technologies, patterns, and decisions needed to build the project correctly.
+
+**AUTONOMOUS PROGRESSION:** Once implementation begins, work autonomously through ALL stages without stopping to ask permission. Continue from stage to stage until the entire project is built, tested, and complete. Only stop if there is a critical blocker that prevents any progress (e.g., missing critical information that cannot be inferred from documentation). Do not ask for approval between stages - just proceed to the next stage automatically after completing the current one.
+
+## Finding Project Documentation
+
+**Note:** Use codebase search to locate project documentation. The AI can easily find project docs by searching for the project name.
+
+**What to Read:**
+1. **Main project file** - Overview, concept, status, and links to all artifacts
+2. **Architecture artifact** - System design, component breakdown, technology choices
+3. **Implementation artifact** - Setup steps, project structure, coding patterns, deployment
+4. **Specific artifacts** - API, smart contracts, security, etc. as needed for your task
+
+**Reading Order:**
+1. Main project file (overview and current status)
+2. Architecture artifact (system design and technology stack)
+3. Implementation artifact (setup, patterns, structure)
+4. Specific artifacts as needed (API, contracts, security, etc.)
+
+## Understanding Project Documentation
+
+### Key Information to Extract
+
+**1. Technology Stack**
+- **Exact versions:** Note exact versions specified (e.g., "React 18.2.0", not just "React")
+- **Why chosen:** Understand reasoning for technology choices
+- **Dependencies:** Note all dependencies and their versions
+
+**2. Architecture & Design**
+- **Component structure:** How components are organized
+- **Data flow:** How data moves through the system
+- **Patterns:** What architectural patterns are used
+- **Interactions:** How components interact
+
+**3. Implementation Details**
+- **Project structure:** Exact directory layout
+- **Coding patterns:** Conventions, style, patterns to follow
+- **Setup steps:** Exact commands and configuration
+- **Environment variables:** All required variables with examples
+
+**4. Specifications**
+- **API endpoints:** Exact request/response formats
+- **Database schema:** Exact field types, constraints, indexes
+- **Smart contracts:** Exact function signatures, events, state
+- **Data structures:** Exact formats and validation rules
+
+**5. Decisions Made**
+- **Why decisions were made:** Understand reasoning
+- **Trade-offs:** What was gained/lost with decisions
+- **Alternatives considered:** What other options were evaluated
+
+### What to Look For
+
+**In Main Project File:**
+- Project concept and goals
+- High-level architecture
+- Current status (what's done, what's next)
+- Links to detailed artifacts
+
+**In Architecture Artifact:**
+- Detailed component breakdown
+- Technology choices with versions
+- Data flow and interactions
+- Design patterns
+
+**In Implementation Artifact:**
+- Exact project structure
+- Development setup steps
+- Coding patterns and conventions
+- Deployment process
+
+**In API Artifact:**
+- All endpoint specifications
+- Request/response formats
+- Authentication methods
+- Error handling
+
+**In Smart Contract Artifact:**
+- Contract structures
+- Function signatures
+- Event definitions
+- State variables
+
+## App Spec as Ground Truth
+
+**CRITICAL:** The application specification (app spec, also called PRD - Product Requirements Document) serves as the single source of truth for what to build.
+
+### Purpose
+
+The app spec is a comprehensive document that defines:
+- What the application does
+- All features and requirements
+- Architecture decisions
+- Technology choices
+- User flows and interactions
+- Success criteria
+
+**Terminology:**
+- **App Spec:** Application specification (technical term)
+- **PRD:** Product Requirements Document (business term)
+- Both refer to the same comprehensive specification document
+
+### Creating the App Spec
+
+**When Creating Project Documentation:**
+1. **Start with App Spec:** Create detailed app spec before breaking into features
+2. **Be Comprehensive:** Include all features, requirements, and decisions
+3. **Use as Template:** Can use existing app spec as template for new projects
+4. **AI-Assisted:** Use AI coding assistant to help create app spec from high-level description
+
+### App Spec Structure
+
+**Recommended Sections:**
+- **Overview:** What the application does, target users, core value proposition
+- **Features:** Complete list of all features to implement
+- **Architecture:** High-level system design, component breakdown
+- **Technology Stack:** All technologies with exact versions and reasoning
+- **User Flows:** How users interact with the application
+- **Success Criteria:** How to know when the application is complete
+
+### Using App Spec During Development
+
+**For Initializer/Planning Phase:**
+- Read app spec to understand full scope
+- Generate detailed feature list from app spec
+- Break features into granular tasks
+- Create implementation plan
+
+**For Coding Phase:**
+- Reference app spec when implementing features
+- Ensure implementation matches spec
+- Use spec to understand feature context and requirements
+- Verify completed features match spec
+
+### App Spec as Context Anchor
+
+**For Long-Running Projects:**
+- App spec provides stable context anchor
+- Each new session can reference app spec to understand project goals
+- Prevents drift from original requirements
+- Enables consistent implementation across multiple sessions
+- **Stays aligned even after 50+ sessions** - provides consistent reference point
+
+**Pattern:**
+1. **Initializer Session:** Reads app spec → Creates feature list → Creates initialization script → Initializes git → Creates progress file
+2. **Each Coding Session:**
+   - Reads app spec for context
+   - Reads feature list to see what's next
+   - Reads progress to understand what was just done
+   - Reads git log to see recent changes
+   - Runs initialization script to start app
+   - Implements next feature(s)
+   - Updates progress with summary
+   - Marks feature(s) as complete in feature list
+   - Commits changes
+3. **Next Session:** Repeats from step 2
+
+**Progress Reporting:**
+- After each session, automatically run all tests
+- Calculate percentage of tests passing
+- Track progress: "X% of tests passing after Y sessions"
+- Helps monitor long-running development progress
+
+## Using Project Documentation When Building
+
+### Before Starting
+
+**1. Environment Verification**
+- [ ] Verify all prerequisites are installed (Node, database, etc.)
+- [ ] Run setup commands from documentation
+- [ ] Verify environment variables are configured
+- [ ] Run initial test suite to verify setup works
+- [ ] Start development server to verify it runs
+- [ ] Check that all dependencies install correctly
+
+**2. Verify You Have All Information**
+- [ ] Technology stack with exact versions
+- [ ] Project structure defined
+- [ ] Setup steps documented
+- [ ] Patterns and conventions specified
+- [ ] All specifications needed for your task
+
+**3. Check Current Status**
+- What's already built?
+- What's in progress?
+- What should you work on next?
+- Are there any blockers?
+
+**4. Understand the Context**
+- What phase is the project in? (planning, design, development, testing)
+- What's the priority?
+- What are the constraints?
+
+### During Implementation
+
+**0. Task Granularity Strategy**
+
+**CRITICAL:** Break work into very granular, specific tasks rather than large monolithic features.
+
+**Why Granular Tasks:**
+- Each task completable in one session
+- Easier to track progress
+- Better context management (can complete without context overflow)
+- Enables regression testing after each task
+- Clearer success criteria per task
+
+**Task Breakdown Pattern:**
+- **Feature Level:** "User Authentication"
+- **Task Level:** 
+  - "Create login form component"
+  - "Add email/password validation"
+  - "Implement login API endpoint"
+  - "Add error handling for invalid credentials"
+  - "Create session management"
+  - "Add logout functionality"
+
+**Each Task Should Include:**
+- **Category:** Feature category (e.g., "UI", "API", "Authentication")
+- **Description:** What needs to be done
+- **Implementation Steps:** How to implement it
+- **Validation Criteria:** How to verify it works (step-by-step)
+- **Test Steps:** What tests to write/run
+- **Dependencies:** What needs to be done first
+- **Passes:** Boolean (true/false) - whether task is complete
+
+**Feature List Update Rules:**
+- **CRITICAL:** Only update the `passes` field (false → true) when feature is complete
+- **DO NOT modify** validation steps or test steps (prevents lazy shortcuts)
+- **DO NOT remove** validation steps even if some seem unnecessary
+- Mark as `true` only after ALL validation steps pass
+- This prevents agents from skipping validation steps
+
+**Benefits:**
+- Clear progress tracking (can see exactly what's done)
+- Better context management (smaller context per task)
+- Easier regression testing (test after each task)
+- Enables parallel work (different tasks can be worked on separately)
+- Better for long-running autonomous development
+
+**1. Follow Exact Specifications**
+- **Use exact versions:** Don't use different versions than specified
+- **Follow structure:** Use the exact project structure documented
+- **Follow patterns:** Use the coding patterns and conventions specified
+- **Follow formats:** Use exact API formats, data structures, etc.
+
+**2. Test-Driven Development (TDD) Cycle**
+
+**For each feature/component:**
+1. **Red:** Write failing test first (specify expected behavior)
+2. **Green:** Write minimal code to make test pass
+3. **Refactor:** Improve code while keeping tests green
+4. **Repeat:** Continue until feature is complete
+
+**Benefits:**
+- Ensures tests are written (not skipped)
+- Forces clear specification of behavior
+- Catches regressions immediately
+- Enables safe refactoring
+
+**3. Incremental Development**
+
+**Work in Small Increments:**
+- Implement one small feature at a time
+- Write tests → Implement → Test → Fix → Commit
+- Don't wait until stage completion to commit
+- Each commit should be a working, tested increment
+
+**Initialization Script Pattern:**
+- **CRITICAL:** Create an initialization script that coding agents can run to spin up the application
+- **Purpose:** Each new session needs to start the development server, database, etc.
+- **File:** `init.sh`, `init.js`, or `setup.sh` in project root
+- **Contents:** Commands to start backend, frontend, database, and any other services
+- **Usage:** Coding agents run this script at the start of each session to get the app running
+- **Example:** `npm run dev` or `./scripts/start-all.sh` that starts all services
+
+**Commit Strategy for Save States:**
+- **CRITICAL:** Make commits after each feature/task completion (not just at stage end)
+- Creates rollback points if something breaks later
+- Enables safe experimentation and easy recovery
+- Each commit represents a working state that can be reverted to
+- Pattern: Complete feature → Test → Commit → Move to next feature
+
+**Git as Core Infrastructure:**
+- **CRITICAL:** Git is absolutely crucial for any AI coding system, not optional
+- Initialize git repository in initializer/planning phase
+- Use git history for context (coding agents read git log to understand recent changes)
+- Each commit creates a save state for rollback
+- Git enables safe experimentation and recovery
+
+**Commit Frequency:**
+- After each passing test suite
+- After fixing bugs
+- After completing a small feature
+- After each task completion (for granular task breakdowns)
+- Before moving to next component
+- **Never accumulate multiple features in one commit** - each feature gets its own commit
+
+**4. Reference Documentation Frequently**
+- Check documentation when unsure
+- Verify your implementation matches specifications
+- Ensure you're following patterns correctly
+
+**5. Write Tests As You Build**
+- **Unit tests:** Write unit tests for each function, component, or module as you implement it
+- **Integration tests:** Write integration tests for component interactions and API endpoints
+- **E2E tests:** Write Playwright tests for critical user flows
+- **Browser tests:** Use Cursor browser tools for manual testing of UI features
+- **Test coverage:** Aim for >90% coverage on all new code
+
+**6. Incremental Testing**
+- Write test → Run test → Fix if fails → Continue
+- Run test suite after each small change
+- Don't accumulate untested code
+- Fix failing tests immediately
+- Verify coverage increases with each feature
+
+**7. Build & Runtime Verification**
+
+**After Each Implementation:**
+- **Build Check:** Run build command (if applicable) - `npm run build` or equivalent
+- **Start Server:** Start development server
+- **No Errors:** Verify no startup errors
+- **Accessible:** Verify application is accessible
+- **Functional:** Use browser to verify basic functionality works
+
+**8. Code Quality Verification**
+
+**Before Committing:**
+- [ ] Code passes linting (`npm run lint` or equivalent)
+- [ ] Code is properly formatted (`npm run format` or equivalent)
+- [ ] No TypeScript errors (`tsc --noEmit` or equivalent)
+- [ ] No console.logs or debug code left in
+- [ ] No commented-out code
+- [ ] All imports are used
+
+**9. Document What You Build**
+- Update status in main project file
+- Add notes about implementation details
+- Document any deviations and why
+- Update progress tracking artifacts (if applicable)
+
+**10. Progress Tracking for Long-Running Projects**
+
+**CRITICAL:** For long-running projects or multi-session development, maintain progress tracking artifacts.
+
+**Progress Artifact Pattern:**
+- **File:** `project-name-progress.md`, `claude-progress.txt`, or update in main project file
+- **Update Frequency:** After each feature completion or major milestone
+- **Contents:**
+  - Summary of what was just completed
+  - Current status (what's in progress)
+  - Next priorities (what to work on next)
+  - Any blockers or issues encountered
+  - Recent commits or changes
+  - **Session number** (track which session we're on)
+- **Important:** This file is completely rewritten each session (not appended) - contains only the most recent session summary
+- **Session History:** Can include overview of previous sessions for context
+- **Important:** This file is completely rewritten each session (not appended) - contains only the most recent session summary
+- **Session History:** Can include overview of previous sessions for context
+
+**Benefits:**
+- Enables context handoff between sessions
+- New sessions can quickly understand current state
+- Prevents context window overflow
+- Enables autonomous long-running development
+
+**Update Process:**
+1. After completing a feature, update progress artifact
+2. Include: feature name, what was implemented, any issues
+3. Update "Next Priorities" section
+4. Note any blockers that need attention
+5. Commit progress artifact along with code changes
+
+**11. Autonomous Progression Through Stages**
+
+**CRITICAL:** Work autonomously through all implementation stages without stopping.
+
+**Rules:**
+- **Don't stop between stages:** After completing one stage, immediately proceed to the next
+- **Don't ask for permission:** Continue building until all stages are complete
+- **Make decisions from documentation:** Use the documentation to make implementation decisions
+- **Only stop for critical blockers:** Only pause if there's missing critical information that prevents ALL progress
+- **Infer from context:** If minor details are unclear, infer reasonable solutions from the documentation patterns
+- **Complete the full implementation:** Build, test, verify, and document everything before stopping
+
+**Stage Progression:**
+1. Complete current stage (build, test, verify build, commit)
+2. Immediately move to next stage
+3. Repeat until all stages are complete
+4. Only then provide summary of what was built
+
+**When to Ask Questions (Rare Cases Only):**
+- Critical information is completely missing and prevents any progress
+- Documentation has conflicting specifications that cannot be resolved
+- Technical blocker that cannot be solved with standard debugging approaches
+
+**When NOT to Ask:**
+- Minor implementation details (infer from patterns in docs)
+- Between stages (just proceed)
+- For approval to continue (just continue)
+- Style choices (follow documentation patterns)
+
+### Testing Requirements
+
+**CRITICAL:** Testing is mandatory at all levels. Tests must be written as code is implemented, not after.
+
+#### Test Pyramid Structure
+
+**1. Unit Tests (Foundation)**
+- **When:** Write immediately as you implement each function/component
+- **What:** Test individual functions, methods, components in isolation
+- **Tools:** Jest, Vitest, or project-specific unit testing framework
+- **Coverage:** Every function, method, and component should have unit tests
+- **Location:** Co-located with code or in `__tests__`/`tests` directories
+
+**2. Integration Tests (Middle Layer)**
+- **When:** After implementing related components that interact
+- **What:** Test component interactions, API endpoints, database operations
+- **Tools:** Same as unit tests, with additional setup for integration scenarios
+- **Coverage:** All API endpoints, database operations, component integrations
+
+**3. End-to-End (E2E) Tests (Top Layer)**
+- **When:** After implementing complete user flows
+- **What:** Test critical user journeys from start to finish
+- **Tools:** Playwright (required)
+- **Coverage:** All critical user flows, authentication flows, main features
+- **Location:** `tests/e2e/` or `e2e/` directory
+
+**4. Browser Automation Testing (Critical for Long-Running Projects)**
+- **When:** For UI features, visual testing, user flow validation, and autonomous testing
+- **What:** Use browser automation (Puppeteer MCP, Playwright) to test applications as users would
+- **Tools:** Puppeteer MCP server, Playwright, Cursor browser tools
+- **Coverage:** 
+  - Visual appearance and correctness
+  - Responsive design (mobile, tablet, desktop)
+  - Actual user interactions and flows
+  - UI functionality that unit tests can't catch
+  - End-to-end user journeys
+- **Why Critical:** Validates that features actually work from a user perspective, not just that code compiles
+- **Pattern:** After implementing a feature, use browser automation to navigate the app, interact with the feature, and verify it works as expected
+- **Timing Consideration:** Browser automation takes time (page loads, waiting for interactions) but saves tokens - this is expected and acceptable
+- **UI Requirement:** Need some kind of user interface to take full advantage of browser automation testing
+- **Visual Validation:** Can take screenshots, navigate pages, click buttons, fill forms - validates actual user experience
+
+#### Testing Workflow
+
+**During Development:**
+1. Write unit tests for each function/component as you implement it
+2. Run tests frequently to catch issues early
+3. Ensure tests pass before moving to next feature
+4. Add integration tests when components interact
+5. Add E2E tests for complete user flows
+6. Use browser automation to test features as users would
+7. **Perform regression testing** - randomly spot-check 1-2 previously completed features
+
+#### Regression Testing
+
+**CRITICAL:** After implementing new features, perform regression testing to ensure nothing broke.
+
+**Process:**
+1. **After completing a feature:** Randomly select 1-2 previously completed features (marked as `passes: true` in feature list)
+2. **Test them:** Run the same tests/validation that was used when they were first implemented
+3. **Verify:** Ensure they still work correctly
+4. **If broken:** 
+   - Mark feature as `passes: false` in feature list
+   - Fix the regression
+   - Re-run validation steps
+   - Mark as `passes: true` again
+   - Do not move to next feature until regression is fixed
+5. **Document:** Note any regressions found and how they were fixed
+
+**Why Critical:**
+- Catches breaking changes immediately
+- Prevents accumulation of broken features
+- Ensures application remains functional as new features are added
+- Critical for long-running autonomous development
+
+**Tools:**
+- Re-run unit/integration tests for selected features
+- Use browser automation to test user flows
+- Check that UI still renders correctly
+- Verify API endpoints still work
+
+**Before Stage Completion:**
+1. Run all tests and ensure they pass
+2. Check test coverage (must be >90%)
+3. Fix any failing tests
+4. Add missing tests if coverage is below 90%
+5. **Perform regression testing:** Randomly test 1-2 previously completed features
+6. **Verify build succeeds:** Run build command and ensure no errors
+7. **Verify application runs:** Start server and verify it starts without errors
+8. **Browser automation verification:** Use browser automation to test new features as users would
+9. **Manual verification:** Use browser tools to verify UI works correctly
+10. Update project documentation in `/docs` directory
+11. Update progress tracking artifacts (if applicable)
+12. Commit and push to GitHub using GitHub CLI
+
+#### Test Coverage Requirements
+
+**Minimum Coverage: 90%**
+- **Unit tests:** >90% line, branch, and function coverage
+- **Integration tests:** All critical paths covered
+- **E2E tests:** All critical user flows covered
+- **Tools:** Use coverage tools (Jest coverage, Vitest coverage, etc.)
+
+**Coverage Commands:**
+```bash
+# Example for JavaScript/TypeScript projects
+npm run test:coverage
+# or
+npm test -- --coverage
+
+# Verify coverage threshold
+# Ensure coverage is above 90% before proceeding
+```
+
+#### Playwright E2E Testing
+
+**Setup:**
+- Install Playwright: `npm install -D @playwright/test`
+- Configure `playwright.config.ts` or `playwright.config.js`
+- Create test files in `tests/e2e/` or `e2e/` directory
+
+**Test Structure:**
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.describe('Feature Name', () => {
+  test('should complete user flow', async ({ page }) => {
+    // Navigate to page
+    await page.goto('/path');
+    
+    // Perform actions
+    await page.click('button');
+    
+    // Assert results
+    await expect(page.locator('.result')).toBeVisible();
+  });
+});
+```
+
+**Critical Flows to Test:**
+- User authentication (login, logout, registration)
+- Main feature workflows
+- Form submissions
+- Navigation flows
+- Error handling
+- Data persistence
+
+#### Browser-Based Manual Testing with Cursor
+
+**When to Use:**
+- Visual testing of UI components
+- Testing responsive design
+- Complex user interactions
+- Verifying accessibility
+- Testing browser-specific features
+
+**Workflow:**
+1. Start development server
+2. Use `browser_navigate` to open the application
+3. Use `browser_snapshot` to capture current state
+4. Use `browser_click`, `browser_type`, `browser_select_option` to interact
+5. Use `browser_take_screenshot` to document visual state
+6. Verify expected behavior matches specifications
+
+**Example:**
+```typescript
+// Navigate to application
+browser_navigate({ url: 'http://localhost:3000' });
+
+// Capture snapshot
+const snapshot = browser_snapshot();
+
+// Interact with elements
+browser_click({ element: 'Login button', ref: snapshot.loginButtonRef });
+
+// Verify results
+browser_snapshot(); // Check updated state
+```
+
+#### Stage Completion Checklist
+
+**Before marking a stage as complete:**
+
+- [ ] All unit tests written and passing
+- [ ] All integration tests written and passing
+- [ ] All E2E tests written and passing
+- [ ] Test coverage is >90% (verify with coverage report)
+- [ ] All tests pass (run full test suite)
+- [ ] **Build succeeds:** Run build command (`npm run build` or equivalent) - no errors
+- [ ] **Application runs:** Start development server and verify no startup errors
+- [ ] **Runtime verification:** Application is accessible and functional
+- [ ] **Code quality:** Linting passes, formatting correct, no TypeScript errors
+- [ ] **Regression testing:** 1-2 previously completed features tested and working
+- [ ] Browser automation testing completed for new features
+- [ ] Browser-based manual testing completed for UI features
+- [ ] Project documentation updated in `/docs` directory
+- [ ] Progress tracking artifacts updated (if applicable)
+- [ ] Changes committed to git with proper commit message format (after each feature)
+- [ ] Changes pushed to GitHub using GitHub CLI
+
+**GitHub CLI Usage:**
+- **Never attempt to log in:** Assume user is already authenticated
+- **Check authentication:** `gh auth status` (if needed, but don't try to log in)
+- **Commit changes:** `git add . && git commit -m "message"`
+- **Push to GitHub:** `git push` or `gh repo sync` (if using GitHub CLI workflow)
+- **Do not use:** `gh auth login` or any authentication commands
+
+**Commit Message Format:**
+
+**Format:** `type(scope): description`
+
+**Types:**
+- `feat`: New feature
+- `fix`: Bug fix
+- `test`: Adding tests
+- `refactor`: Code refactoring
+- `docs`: Documentation
+- `chore`: Maintenance
+- `build`: Build system changes
+
+**Examples:**
+- `feat(auth): add login component with tests`
+- `fix(api): fix validation error handling`
+- `test(products): add unit tests for ProductCard`
+- `build: verify build succeeds at stage completion`
+
+**Documentation Updates:**
+- Update `/docs` directory with:
+  - Implementation details
+  - API changes
+  - Testing approach
+  - Configuration changes
+  - Deployment notes
+
+### Implementation Checklist
+
+**Before Writing Code:**
+- [ ] Read main project file
+- [ ] Read relevant artifacts
+- [ ] Understand architecture
+- [ ] Understand patterns and conventions
+- [ ] Verify setup is correct
+
+**While Writing Code:**
+- [ ] Follow exact project structure
+- [ ] Use exact technology versions
+- [ ] Follow coding patterns specified
+- [ ] Match API/data format specifications
+- [ ] Follow error handling patterns
+
+**After Writing Code:**
+- [ ] Write unit tests for new code (TDD: test first, then implement)
+- [ ] Run tests to ensure they pass
+- [ ] **Perform regression testing:** Test 1-2 previously completed features
+- [ ] Use browser automation to test feature as user would
+- [ ] Run build command to verify it succeeds
+- [ ] Verify implementation matches specifications
+- [ ] Check test coverage (aim for >90%)
+- [ ] Run linting and formatting checks
+- [ ] Verify application runs without errors
+- [ ] Update project status if needed
+- [ ] Update progress tracking artifacts (if applicable)
+- [ ] Document any deviations
+- [ ] Commit after each feature/task (creates save state)
+
+## Common Scenarios
+
+### Scenario 1: Building a New Feature
+
+**Steps (Work Autonomously - Don't Stop):**
+1. Read main project file to understand feature context
+2. Read app spec (if available) to understand requirements
+3. Read architecture artifact to understand system design
+4. Read implementation artifact for patterns and structure
+5. Read progress artifact (if available) to understand current state
+6. Read API artifact if feature involves API changes
+7. **TDD Cycle:** Write failing test → Implement → Test → Refactor
+8. Write unit tests for each component/function as you build
+9. Write integration tests for component interactions
+10. Write E2E tests for complete user flows (if applicable)
+11. Use browser automation to test feature as user would
+12. **Perform regression testing:** Test 1-2 previously completed features
+13. Run build command to verify build succeeds
+14. Start server and verify application runs
+15. Use browser tools for manual UI testing (if applicable)
+16. Verify all tests pass and coverage is >90%
+17. Run linting and formatting checks
+18. Commit after feature completion (creates save state)
+19. Update status in main project file
+20. Update progress tracking artifacts (if applicable)
+21. Update `/docs` directory with implementation details
+22. At stage completion: verify build, push to GitHub using GitHub CLI
+23. **IMMEDIATELY proceed to next stage** - don't stop to ask permission
+
+### Scenario 2: Setting Up Development Environment
+
+**Steps:**
+1. Read implementation artifact
+2. Follow exact setup steps
+3. Use exact versions specified
+4. Configure all environment variables as documented
+5. Set up testing framework (Jest/Vitest, Playwright)
+6. Configure test coverage tools
+7. Verify setup works
+8. Run initial test suite to verify testing setup
+9. **Verify build:** Run build command to ensure it works
+10. **Verify runtime:** Start development server and verify it runs
+11. Test that application is accessible and functional
+
+### Scenario 3: Building API Endpoints
+
+**Steps:**
+1. Read API artifact for endpoint specifications
+2. Read implementation artifact for patterns
+3. Follow exact request/response formats
+4. **TDD:** Write failing tests first, then implement
+5. Implement authentication as specified
+6. Handle errors as documented
+7. Write unit tests for each endpoint handler
+8. Write integration tests for API endpoints (test with actual requests)
+9. Write E2E tests for API flows (if user-facing)
+10. Verify all tests pass and coverage is >90%
+11. Run build command to verify build succeeds
+12. Test endpoints manually or with browser tools
+13. Update API documentation in `/docs`
+
+### Scenario 4: Building Smart Contracts
+
+**Steps:**
+1. Read smart contract artifact
+2. Use exact function signatures
+3. Follow exact state variable structures
+4. Emit events as specified
+5. Follow deployment process
+
+### Scenario 5: Building Frontend Components
+
+**Steps:**
+1. Read architecture artifact for component structure
+2. Read implementation artifact for patterns
+3. Follow exact project structure
+4. Use exact technology versions
+5. Follow UI/UX specifications
+6. **TDD:** Write failing tests first, then implement component
+7. Write unit tests for each component
+8. Write integration tests for component interactions
+9. Write Playwright E2E tests for user flows
+10. Run build command to verify build succeeds
+11. Start server and verify component renders
+12. Use browser tools for manual visual testing
+13. Verify all tests pass and coverage is >90%
+14. Test responsive design and accessibility
+15. Run linting and formatting checks
+
+
+
+### Tool Restrictions
+
+**Allowed Tools:**
+- File read/write (within project directory)
+- Git operations
+- Package manager commands (npm, yarn, pnpm)
+- Browser automation (Puppeteer, Playwright)
+- Test runners
+- Build commands
+
+**Blocked Operations:**
+- Delete directories or parent directories
+- Kill processes (except specific allowed ones)
+- Modify system files
+- Access files outside project directory
+- Network operations (except to localhost for testing)
+
+### System Prompt Customization
+
+**When Using SDKs:**
+- Can customize system prompt to define agent behavior
+- Set working directory restrictions
+- Define allowed tools and operations
+- Configure security policies
+- Set model and temperature
+
+## Error Handling & Debugging
+
+### When Build/Test Fails
+
+**Strategy:**
+1. Read error message carefully
+2. Check if dependencies are installed correctly
+3. Verify environment variables are set
+4. Check if versions match documentation
+5. Look for similar errors in project docs
+6. Fix root cause, not symptoms
+7. Re-run tests after each fix
+8. Verify build succeeds after fixes
+
+### When Implementation Doesn't Work
+
+**Strategy:**
+1. Verify you followed documentation exactly
+2. Check if you missed a step in setup
+3. Verify all dependencies are correct versions
+4. Check browser console for errors
+5. Verify environment is configured correctly
+6. Run build command to check for build errors
+7. Check if server starts without errors
+
+## Handling Missing or Unclear Information
+
+### If Information is Missing
+
+**Check:**
+1. Did you read all relevant artifacts?
+2. Is the information in a different artifact?
+3. Is it in the main project file?
+4. Can you infer it from patterns in the documentation?
+
+**If Still Missing:**
+- **If critical and prevents all progress:** Ask user (rare case)
+- **If minor detail:** Infer reasonable solution from documentation patterns and continue
+- **Don't stop implementation:** Make reasonable inference and proceed
+- Document what was inferred in your implementation notes
+
+### If Information is Unclear
+
+**Actions:**
+1. Re-read the relevant section
+2. Check related artifacts
+3. Look for examples or additional context
+4. Ask the user for clarification
+
+**Don't:**
+- Make assumptions
+- Use different versions/patterns than specified
+- Skip unclear parts
+
+### If Specifications Conflict
+
+**Actions:**
+1. Check if there's a "Decisions Made" section explaining the conflict
+2. Check if one specification is more recent
+3. Ask the user which specification to follow
+
+## Working Through Implementation Stages
+
+**CRITICAL:** When a project has multiple implementation stages, work through ALL of them autonomously without stopping.
+
+**Process:**
+1. **Read implementation stages document** - Understand all stages that need to be completed
+2. **Start with Stage 1** - Complete it fully (build, test, verify build, commit)
+3. **Immediately proceed to Stage 2** - Don't stop to ask permission
+4. **Continue through all stages** - Work autonomously until all stages are complete
+5. **Only stop when everything is done** - All stages built, tested, verified, and documented
+
+**Stage Completion Checklist (for each stage):**
+- [ ] All code implemented according to specifications
+- [ ] All tests written and passing (>90% coverage)
+- [ ] Build succeeds (no errors)
+- [ ] Application runs without errors
+- [ ] Code quality checks pass (linting, formatting)
+- [ ] Documentation updated
+- [ ] Committed and pushed to GitHub
+- [ ] **IMMEDIATELY proceed to next stage** (don't ask permission)
+
+**What NOT to Do:**
+- ❌ Don't stop between stages to ask "Should I continue?"
+- ❌ Don't ask for approval before moving to next stage
+- ❌ Don't pause after completing a stage
+- ❌ Don't wait for user confirmation
+
+**What TO Do:**
+- ✅ Complete current stage fully
+- ✅ Verify everything works (build, tests, runtime)
+- ✅ Commit and push
+- ✅ Immediately start next stage
+- ✅ Continue until all stages are complete
+- ✅ Then provide summary of what was built
+
+## Best Practices
+
+### 1. Read First, Code Second
+- Always read documentation before writing code
+- Understand the full context before implementing
+- Don't start coding until you understand the specifications
+
+### 2. Follow Exactly
+- Use exact versions specified
+- Follow exact structure documented
+- Match exact formats specified
+- Don't deviate without good reason
+
+### 3. Verify Frequently
+- Check your implementation against specifications
+- Ensure you're following patterns correctly
+- Verify versions and configurations match
+
+### 4. Work Autonomously
+- Proceed through all stages without stopping
+- Make decisions from documentation
+- Only stop for critical blockers that prevent all progress
+- Complete the full implementation before stopping
+
+### 5. Document Changes
+- If you need to deviate, document why
+- Update project status as you work
+- Add notes about implementation details
+
+### 6. Ask Only When Critical
+- Only ask if critical information is missing and prevents all progress
+- Don't ask for approval between stages
+- Don't ask about minor implementation details (infer from docs)
+
+## Integration with Other Rules
+
+- **Projects Organization:** See [projects-organization](@projects-organization) for how projects are organized
+- **Project Artifacts:** See [project-artifacts](@project-artifacts) for artifact structure and how to read them
+- **Project Documentation Guide:** See [PROJECT_DOCUMENTATION_GUIDE.md](../brain/projects/PROJECT_DOCUMENTATION_GUIDE.md) for what information is in each file type
+
+## GitHub CLI Usage
+
+**CRITICAL:** Never attempt to authenticate with GitHub. The user is already logged in.
+
+**Rules:**
+- **Never use:** `gh auth login` or any authentication commands
+- **Check status only if needed:** `gh auth status` (but don't try to fix if not authenticated)
+- **Assume authenticated:** User is already logged in via GitHub CLI
+- **Use standard git commands:** `git add`, `git commit`, `git push`
+- **Use GitHub CLI for advanced features:** `gh pr create`, `gh issue create`, etc. (only if authenticated)
+
+**Commit and Push Workflow:**
+```bash
+# Stage changes
+git add .
+
+# Commit with descriptive message
+git commit -m "feat: implement user authentication with tests"
+
+# Push to GitHub (assumes remote is configured)
+git push
+
+# Or use GitHub CLI if needed
+gh repo sync
+```
+
+## Example Workflow
+
+```
+User: "Build the user authentication feature for the marketplace project"
+
+AI Assistant Process (Autonomous - No Stopping):
+1. Search for marketplace project: codebase_search("marketplace project documentation", ["brain/projects"])
+2. Find: brain/projects/2025/decentralized-marketplace/decentralized-marketplace-platform.md
+3. Read main file:
+   - Understand: It's a decentralized marketplace
+   - Status: In development, authentication not yet implemented
+   - Check for implementation stages document
+4. Read architecture artifact:
+   - Understand: Wallet-based authentication (MetaMask)
+   - No traditional username/password
+5. Read API artifact:
+   - Check if there are auth endpoints (none yet - need to implement)
+6. Read implementation artifact:
+   - Project structure: frontend/, backend/, contracts/
+   - Patterns: TypeScript, Next.js, Solidity
+   - Check for implementation stages
+7. If multiple stages exist:
+   - Complete Stage 1: Setup and basic structure
+   - Verify build, tests, commit
+   - IMMEDIATELY proceed to Stage 2 (don't ask permission)
+   - Complete Stage 2: Core authentication logic
+   - Verify build, tests, commit
+   - IMMEDIATELY proceed to Stage 3 (don't ask permission)
+   - Continue until all stages complete
+8. Implement (using TDD):
+   - Write failing tests first
+   - Follow exact structure
+   - Use wallet integration pattern
+   - Follow coding conventions
+9. Write tests:
+   - Unit tests for auth functions
+   - Integration tests for auth endpoints
+   - E2E tests for login/logout flows
+   - Browser tests for UI interactions
+10. Verify:
+    - All tests pass
+    - Coverage is >90%
+    - Build succeeds (npm run build)
+    - Application runs without errors
+11. Update documentation:
+    - Update status in main project file
+    - Update /docs with implementation details
+12. Commit and push:
+    - git add .
+    - git commit -m "feat(auth): implement user authentication with tests"
+    - git push
+13. If more stages exist, IMMEDIATELY proceed to next stage
+14. Only stop when ALL stages are complete, then provide summary
+```
+
+## Quick Reference
+
+**When user asks to build something:**
+1. ✅ Find project documentation (use codebase search)
+2. ✅ Read main project file
+3. ✅ Read relevant artifacts (including implementation stages if available)
+4. ✅ Verify environment setup works
+5. ✅ Understand specifications and all stages
+6. ✅ Follow exactly
+7. ✅ **Work autonomously through ALL stages** - don't stop between stages
+8. ✅ Use TDD: Write test → Implement → Test → Refactor
+9. ✅ Write tests as you build (unit, integration, E2E)
+10. ✅ Run build command frequently (at least at end of each stage)
+11. ✅ Verify application runs without errors
+12. ✅ Use browser tools for manual UI testing
+13. ✅ Verify all tests pass and coverage >90%
+14. ✅ Run linting and formatting checks
+15. ✅ Commit incrementally with proper format
+16. ✅ Verify against docs
+17. ✅ Update /docs directory
+18. ✅ At each stage completion: verify build, commit, push to GitHub
+19. ✅ **IMMEDIATELY proceed to next stage** - don't ask permission
+20. ✅ Continue until ALL stages are complete
+21. ✅ Update status with final summary
+
+**Key Questions to Answer:**
+- What technologies? (exact versions)
+- What structure? (exact layout)
+- What patterns? (exact conventions)
+- What specifications? (exact formats)
+- What's the status? (what's done, what's next)
