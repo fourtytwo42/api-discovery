@@ -49,20 +49,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create endpoint
-    const endpointId = `ep_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const proxyUrl = `/proxy/${endpointId}`;
-
+    // Create endpoint (Prisma will generate ID with cuid())
     const endpoint = await prisma.endpoint.create({
       data: {
-        id: endpointId,
         userId: authResult.user.id,
         name: validated.name || null,
         destinationUrl: validated.destinationUrl,
-        proxyUrl,
+        proxyUrl: '', // Will be set after creation
         status: 'ACTIVE',
         creditsUsed: creditsToCharge,
       },
+    });
+
+    // Update with proxy URL
+    const updatedEndpoint = await prisma.endpoint.update({
+      where: { id: endpoint.id },
+      data: { proxyUrl: `/proxy/${endpoint.id}` },
     });
 
     // Deduct credits if needed
@@ -70,8 +72,8 @@ export async function POST(request: NextRequest) {
       await deductCredits(
         authResult.user.id,
         creditsToCharge,
-        `Endpoint creation: ${endpointId}`,
-        endpointId
+        `Endpoint creation: ${updatedEndpoint.id}`,
+        updatedEndpoint.id
       );
     }
 
@@ -82,12 +84,12 @@ export async function POST(request: NextRequest) {
       userEmail: authResult.user.email,
       action: 'ENDPOINT_CREATED',
       resourceType: 'ENDPOINT',
-      resourceId: endpointId,
+      resourceId: updatedEndpoint.id,
       details: { destinationUrl: validated.destinationUrl, creditsUsed: creditsToCharge },
       ...clientInfo,
     });
 
-    return NextResponse.json({ endpoint }, { status: 201 });
+    return NextResponse.json({ endpoint: updatedEndpoint }, { status: 201 });
   } catch (error) {
     if (error instanceof ValidationError) {
       return NextResponse.json(
