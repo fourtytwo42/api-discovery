@@ -354,8 +354,21 @@ function injectApiInterceptor(html: string, endpointId: string): string {
   
   console.log('[API Discovery Proxy] WebSocket interceptor installed successfully');
   
+  // Throttle logging to prevent excessive API calls
+  let lastLogTime = 0;
+  const LOG_THROTTLE_MS = 1000; // Only log once per second max
+  const loggedUrls = new Set();
+  const MAX_LOGGED_URLS = 100; // Keep track of recent URLs to avoid duplicates
+  
   function logApiCall(url, method, body, headers) {
     try {
+      const now = Date.now();
+      
+      // Throttle: only log once per second
+      if (now - lastLogTime < LOG_THROTTLE_MS) {
+        return;
+      }
+      
       // Skip logging for asset requests to reduce memory usage
       const urlLower = (url || '').toLowerCase();
       const isAsset = /\.(css|js|woff|woff2|ttf|eot|otf|png|jpg|jpeg|gif|svg|ico|webp|mp4|mp3|pdf|map|woff2)$/i.test(urlLower) ||
@@ -363,11 +376,48 @@ function injectApiInterceptor(html: string, endpointId: string): string {
                       urlLower.includes('/static/') ||
                       urlLower.includes('/assets/') ||
                       urlLower.includes('/images/') ||
-                      urlLower.includes('/fonts/');
+                      urlLower.includes('/fonts/') ||
+                      urlLower.includes('/favicon') ||
+                      urlLower.includes('/analytics') ||
+                      urlLower.includes('/tracking') ||
+                      urlLower.includes('/beacon') ||
+                      urlLower.includes('/pixel') ||
+                      urlLower.includes('/gtm') ||
+                      urlLower.includes('/ga/') ||
+                      urlLower.includes('/google-analytics');
       
       if (isAsset) {
         return; // Skip logging assets
       }
+      
+      // Skip if we've already logged this exact URL recently
+      const urlKey = method + ':' + url;
+      if (loggedUrls.has(urlKey)) {
+        return;
+      }
+      
+      // Clean up old URLs if set gets too large
+      if (loggedUrls.size > MAX_LOGGED_URLS) {
+        const firstUrl = loggedUrls.values().next().value;
+        loggedUrls.delete(firstUrl);
+      }
+      loggedUrls.add(urlKey);
+      
+      // Only log API calls to external domains (not same-origin)
+      try {
+        const urlObj = new URL(url, window.location.href);
+        const isSameOrigin = urlObj.origin === window.location.origin;
+        // Skip same-origin requests (they're already handled by the proxy)
+        if (isSameOrigin && !url.includes('/api/')) {
+          return;
+        }
+      } catch (e) {
+        // If URL parsing fails, skip it
+        return;
+      }
+      
+      // Update last log time
+      lastLogTime = now;
       
       // Truncate body if it's too large (max 5KB for logging to reduce memory)
       let truncatedBody = body;
