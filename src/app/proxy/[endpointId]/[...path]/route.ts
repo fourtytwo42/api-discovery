@@ -124,8 +124,12 @@ async function handleProxyRequest(
       });
 
       const contentType = response.headers.get('Content-Type') || '';
-      const isBinary = /^(image|font|audio|video|application\/octet-stream|application\/pdf)/i.test(contentType);
-      const isAsset = /\.(css|js|woff|woff2|ttf|eot|otf|png|jpg|jpeg|gif|svg|ico|webp|mp4|mp3|pdf)$/i.test(targetPath);
+      // More comprehensive binary detection
+      const isBinary = /^(image|font|audio|video|application\/octet-stream|application\/pdf|application\/x-font|application\/vnd\.ms-fontobject)/i.test(contentType);
+      // More comprehensive asset detection including woff2
+      const isAsset = /\.(css|js|woff|woff2|ttf|eot|otf|png|jpg|jpeg|gif|svg|ico|webp|mp4|mp3|pdf|map)$/i.test(targetPath) || 
+                      /font\/woff/i.test(contentType) ||
+                      /font\/woff2/i.test(contentType);
       
       // Get response body as appropriate type
       let responseBody: string | ArrayBuffer;
@@ -205,11 +209,16 @@ async function handleProxyRequest(
       const filteredHeaders: Record<string, string> = {};
       Object.entries(responseHeaders).forEach(([key, value]) => {
         const lowerKey = key.toLowerCase();
-        // Don't forward these headers
+        // Don't forward these headers, but preserve content-type
         if (!['content-encoding', 'transfer-encoding', 'connection', 'upgrade', 'keep-alive'].includes(lowerKey)) {
           filteredHeaders[key] = value;
         }
       });
+      
+      // Ensure content-type is set correctly for assets
+      if (isAsset && !filteredHeaders['Content-Type'] && contentType) {
+        filteredHeaders['Content-Type'] = contentType;
+      }
 
       // Return response with correct body type
       if (isBinary || isAsset) {
