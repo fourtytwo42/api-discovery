@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Card from '@/components/ui/card';
-import { ChevronDown, ChevronRight } from 'lucide-react';
 
 interface ApiCall {
   id: string;
@@ -146,11 +145,9 @@ export default function ApiCallList({ endpointId }: ApiCallListProps) {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                    {isExpanded ? (
-                      <ChevronDown className="h-5 w-5 text-gray-500 flex-shrink-0" />
-                    ) : (
-                      <ChevronRight className="h-5 w-5 text-gray-500 flex-shrink-0" />
-                    )}
+                    <span className="text-gray-500 flex-shrink-0 text-lg">
+                      {isExpanded ? '▼' : '▶'}
+                    </span>
                     <span
                       className={`px-2 py-1 rounded text-xs font-semibold ${getMethodColor(method)}`}
                     >
