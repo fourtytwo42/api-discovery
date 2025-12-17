@@ -168,6 +168,7 @@ export async function GET(
         sortedCalls.map(call => ({
           requestHeaders: call.requestHeaders as Record<string, unknown>,
           responseHeaders: call.responseHeaders as Record<string, unknown> | undefined,
+          responseStatus: call.responseStatus ?? null,
         }))
       );
 

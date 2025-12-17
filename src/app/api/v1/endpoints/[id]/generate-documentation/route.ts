@@ -504,6 +504,14 @@ ${JSON.stringify(exampleData, null, 2)}`;
 
   const securitySection = securityText ? `\n\nSecurity Information:\n${securityText}\n` : '';
 
+  // Check if authentication is actually required
+  const hasAuthHeader = examples.some(ex => {
+    const headers = ex.requestHeaders || {};
+    return !!(headers['authorization'] || headers['Authorization']);
+  });
+  const has401Response = examples.some(ex => ex.responseStatus === 401);
+  const authRequired = hasAuthHeader || has401Response;
+
   return `You are an API documentation expert. Generate comprehensive, professional API documentation for the following endpoint.
 
 Base URL: ${baseUrl}
@@ -514,17 +522,25 @@ Here are ${examples.length} example API call(s) with their request and response 
 
 ${examplesText}${securitySection}
 
+CRITICAL INSTRUCTIONS FOR AUTHENTICATION:
+- ONLY include authentication requirements if there is CLEAR EVIDENCE:
+  * An "Authorization" header is present in the request headers (NOT Cookie headers)
+  * OR 401 Unauthorized responses are returned
+- DO NOT assume authentication is required just because you see cookies or other headers
+- Cookie headers (like "token" or "active-proxy-endpoint") are for the proxy system, NOT the target API
+- If there is NO Authorization header and NO 401 responses, the endpoint does NOT require authentication
+- Only document authentication if the examples show clear evidence of it being required
+
 Please generate detailed API documentation in Markdown format that includes:
 
 1. **Endpoint Overview**: A clear description of what this endpoint does
 2. **HTTP Method and Path**: The method and normalized path pattern
 3. **Authentication**:
-   - Authentication method required (if any)
-   - JWT token details (if JWT is used): token format, expiration, payload contents
-   - How to obtain and use authentication tokens
-   - Token expiration and renewal information
+   ${authRequired 
+     ? '- Authentication method required (based on Authorization header or 401 responses)\n   - JWT token details (if JWT is used): token format, expiration, payload contents\n   - How to obtain and use authentication tokens\n   - Token expiration and renewal information'
+     : '- This endpoint does NOT require authentication (no Authorization header found, no 401 responses)'}
 4. **Request Details**:
-   - Headers (required and optional, including authentication headers)
+   - Headers (required and optional${authRequired ? ', including authentication headers' : ''})
    - Query Parameters (if any)
    - Request Body Schema (if applicable)
    - Example request with full headers
@@ -535,10 +551,10 @@ Please generate detailed API documentation in Markdown format that includes:
    - Example responses for each status code
 6. **CORS Configuration**: CORS settings if applicable (allowed origins, methods, headers, credentials)
 7. **Security Headers**: Security-related headers returned by the API
-8. **Usage Examples**: Code examples showing how to call this endpoint with proper authentication
+8. **Usage Examples**: Code examples showing how to call this endpoint${authRequired ? ' with proper authentication' : ' (no authentication required)'}
 9. **Error Handling**: Common error responses and how to handle them
 
-IMPORTANT: If JWT tokens are used, include the actual token in the documentation so developers can use it, along with expiration information and what data the token contains.
+${authRequired ? 'IMPORTANT: If JWT tokens are used, include the actual token in the documentation so developers can use it, along with expiration information and what data the token contains.' : 'IMPORTANT: This endpoint does not require authentication. Do not include any authentication requirements in the documentation.'}
 
 Make the documentation clear, professional, and useful for developers who want to integrate with this API. Use proper Markdown formatting with headers, code blocks, and lists.
 

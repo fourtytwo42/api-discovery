@@ -93,6 +93,7 @@ export function decodeJwt(token: string): JwtInfo | null {
 
 /**
  * Extract JWT from Authorization header
+ * NOTE: Only checks Authorization header, NOT cookies (cookies are for proxy auth, not target API auth)
  */
 export function extractJwtFromHeaders(headers: Record<string, unknown>): JwtInfo | null {
   const authHeader = headers['authorization'] || headers['Authorization'];
@@ -116,7 +117,31 @@ export function extractJwtFromHeaders(headers: Record<string, unknown>): JwtInfo
 }
 
 /**
+ * Check if authentication is actually required by the target API
+ * Returns true only if there's clear evidence (Authorization header OR 401 responses)
+ */
+export function isAuthenticationRequired(
+  calls: Array<{
+    requestHeaders: Record<string, unknown>;
+    responseStatus?: number | null;
+  }>
+): boolean {
+  // Check if any call has an Authorization header (clear evidence)
+  const hasAuthHeader = calls.some(call => {
+    const headers = call.requestHeaders || {};
+    return !!(headers['authorization'] || headers['Authorization']);
+  });
+
+  // Check if we got 401 responses (indicates auth is required)
+  const has401Response = calls.some(call => call.responseStatus === 401);
+
+  // Only consider auth required if there's clear evidence
+  return hasAuthHeader || has401Response;
+}
+
+/**
  * Analyze headers for security information
+ * NOTE: Ignores Cookie headers - those are for proxy auth, not target API auth
  */
 export function analyzeHeaders(
   requestHeaders: Record<string, unknown>,
@@ -124,7 +149,7 @@ export function analyzeHeaders(
 ): SecurityHeaders {
   const security: SecurityHeaders = {};
 
-  // Analyze Authorization header
+  // Analyze Authorization header (NOT Cookie header - cookies are for proxy, not target API)
   const authHeader = requestHeaders['authorization'] || requestHeaders['Authorization'];
   if (authHeader && typeof authHeader === 'string') {
     const jwtInfo = extractJwtFromHeaders(requestHeaders);
@@ -138,6 +163,8 @@ export function analyzeHeaders(
       jwtInfo: jwtInfo || undefined,
     };
   }
+  
+  // DO NOT analyze Cookie headers - those are for our proxy system, not the target API
 
   // Analyze CORS headers (from response)
   if (responseHeaders) {
@@ -256,13 +283,18 @@ export function analyzeHeaders(
 
 /**
  * Group security headers across multiple API calls
+ * NOTE: Only considers Authorization headers, NOT Cookie headers (proxy auth is ignored)
  */
 export function groupSecurityHeaders(
   calls: Array<{
     requestHeaders: Record<string, unknown>;
     responseHeaders?: Record<string, unknown>;
+    responseStatus?: number | null;
   }>
 ): SecurityHeaders {
+  // First check if authentication is actually required
+  const authRequired = isAuthenticationRequired(calls);
+  
   // Find the most common/representative headers
   const authHeaderCounts = new Map<string, number>();
   const jwtTokens = new Map<string, JwtInfo>();
@@ -272,7 +304,8 @@ export function groupSecurityHeaders(
   for (const call of calls) {
     const analysis = analyzeHeaders(call.requestHeaders, call.responseHeaders);
 
-    if (analysis.authorization) {
+    // Only include auth if there's clear evidence (Authorization header, not Cookie)
+    if (analysis.authorization && authRequired) {
       const key = `${analysis.authorization.type}:${analysis.authorization.value.substring(0, 20)}`;
       authHeaderCounts.set(key, (authHeaderCounts.get(key) || 0) + 1);
       
@@ -295,9 +328,9 @@ export function groupSecurityHeaders(
     }
   }
 
-  // Get most common authorization
+  // Get most common authorization (only if auth is actually required)
   let mostCommonAuth: SecurityHeaders['authorization'] | undefined;
-  if (authHeaderCounts.size > 0) {
+  if (authRequired && authHeaderCounts.size > 0) {
     const sorted = Array.from(authHeaderCounts.entries()).sort((a, b) => b[1] - a[1]);
     const mostCommonKey = sorted[0][0];
     // Find the corresponding auth info
