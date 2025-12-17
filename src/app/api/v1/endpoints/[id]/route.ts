@@ -14,7 +14,7 @@ const updateEndpointSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authResult = await authenticateRequest(request);
@@ -23,8 +23,9 @@ export async function GET(
       return authResult.error;
     }
 
+    const { id } = await params;
     const endpoint = await prisma.endpoint.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         apiCalls: {
           take: 10,
@@ -61,7 +62,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authResult = await authenticateRequest(request);
@@ -70,8 +71,9 @@ export async function PUT(
       return authResult.error;
     }
 
+    const { id } = await params;
     const endpoint = await prisma.endpoint.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!endpoint) {
@@ -94,7 +96,7 @@ export async function PUT(
     }
 
     const updated = await prisma.endpoint.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(validated.name !== undefined && { name: validated.name }),
         ...(validated.destinationUrl && { destinationUrl: validated.destinationUrl }),
@@ -109,7 +111,7 @@ export async function PUT(
       userEmail: authResult.user.email,
       action: 'ENDPOINT_UPDATED',
       resourceType: 'ENDPOINT',
-      resourceId: params.id,
+      resourceId: id,
       ...clientInfo,
     });
 
@@ -132,7 +134,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authResult = await authenticateRequest(request);
@@ -141,8 +143,9 @@ export async function DELETE(
       return authResult.error;
     }
 
+    const { id } = await params;
     const endpoint = await prisma.endpoint.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!endpoint) {
@@ -154,7 +157,7 @@ export async function DELETE(
     }
 
     await prisma.endpoint.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     // Log audit event
@@ -164,7 +167,7 @@ export async function DELETE(
       userEmail: authResult.user.email,
       action: 'ENDPOINT_DELETED',
       resourceType: 'ENDPOINT',
-      resourceId: params.id,
+      resourceId: id,
       ...clientInfo,
     });
 
