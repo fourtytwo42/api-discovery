@@ -6,6 +6,7 @@ import { cookies } from 'next/headers';
 import { prisma } from '@/lib/database/prisma';
 import { verifyToken } from '@/lib/auth/jwt';
 import ProxyUrlDisplay from '@/components/endpoints/ProxyUrlDisplay';
+import ApiCallList from '@/components/endpoints/ApiCallList';
 
 async function getEndpoint(id: string) {
   try {
