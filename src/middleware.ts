@@ -21,7 +21,15 @@ export function middleware(request: NextRequest) {
   const isRootAsset = /^\/([^/]+\.(png|jpg|jpeg|gif|svg|ico|webp|css|js|woff|woff2|ttf|eot|otf|mp4|mp3|pdf|map))(\?.*)?$/i.test(pathname);
   
   if (isRootAsset && token) {
-    // Check if there's a referer header pointing to a proxy URL
+    // First check for active proxy cookie (set when visiting proxy page)
+    const activeProxyEndpoint = request.cookies.get('active-proxy-endpoint');
+    if (activeProxyEndpoint?.value) {
+      // Redirect to proxy path
+      const assetPath = pathname + (request.nextUrl.search || '');
+      return NextResponse.redirect(new URL(`/proxy/${activeProxyEndpoint.value}${assetPath}`, request.url));
+    }
+    
+    // Fallback: Check if there's a referer header pointing to a proxy URL
     const referer = request.headers.get('referer');
     if (referer) {
       try {

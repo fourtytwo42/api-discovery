@@ -82,13 +82,25 @@ export async function GET(
         // Inject JavaScript to intercept API calls
         const injectedHtml = injectApiInterceptor(rewrittenHtml, endpointId);
 
-        return new NextResponse(injectedHtml, {
+        const nextResponse = new NextResponse(injectedHtml, {
           status: response.status,
           headers: {
             'Content-Type': 'text/html',
             'X-Proxy-For': endpoint.destinationUrl,
           },
         });
+        
+        // Set cookie to track active proxy session for asset requests
+        // This allows middleware to redirect root-level assets to the proxy
+        nextResponse.cookies.set('active-proxy-endpoint', endpointId, {
+          httpOnly: false, // Needs to be accessible to JavaScript for some cases
+          secure: false, // Set to false for development (localhost)
+          sameSite: 'lax',
+          maxAge: 60 * 60 * 24, // 24 hours
+          path: '/',
+        });
+        
+        return nextResponse;
       }
 
       // For non-HTML content, return as-is
