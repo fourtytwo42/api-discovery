@@ -333,7 +333,7 @@ export async function POST(
         const currentVersion = existingDoc?.version || '1.0.0';
         // Always create new documentation (allow multiple versions)
         // Find the highest version number for this endpoint+discoveredEndpoint combination
-        const existingDocs = await prisma.endpointDocumentation.findMany({
+        const existingDocsForPattern = await prisma.endpointDocumentation.findMany({
           where: {
             endpointId,
             discoveredEndpointId: discoveredEndpoint.id,
@@ -342,10 +342,10 @@ export async function POST(
           take: 1,
         });
 
-        const currentVersion = existingDocs.length > 0 
-          ? existingDocs[0].version 
+        const highestVersion = existingDocsForPattern.length > 0 
+          ? existingDocsForPattern[0].version 
           : '0.0';
-        const newVersion = (parseFloat(currentVersion) + 0.1).toFixed(1);
+        const newVersion = (parseFloat(highestVersion) + 0.1).toFixed(1);
 
         // Create new documentation (don't update existing)
         await prisma.endpointDocumentation.create({
