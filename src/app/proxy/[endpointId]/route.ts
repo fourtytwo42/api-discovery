@@ -322,10 +322,12 @@ function escapeRegex(str: string): string {
 }
 
 function injectApiInterceptor(html: string, endpointId: string): string {
+  // Escape endpointId to prevent injection issues
+  const escapedEndpointId = endpointId.replace(/'/g, "\\'").replace(/\\/g, '\\\\');
   const interceptorScript = `
 <script>
 (function() {
-  const endpointId = '${endpointId}';
+  const endpointId = '${escapedEndpointId}';
   const proxyBase = '/proxy/' + endpointId;
   
   // Intercept fetch
