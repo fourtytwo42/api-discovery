@@ -270,11 +270,16 @@ function injectApiInterceptor(html: string, endpointId: string): string {
           // Invalid URL, pass through
         }
       } else {
-        // Relative URL - needs to be proxied
+        // Relative URL - needs to be proxied (including images, favicons, etc.)
         // Rewrite to go through our proxy
         const relativePath = url.startsWith('/') ? url : '/' + url;
         proxiedUrl = proxyBase + relativePath;
-        logApiCall(proxiedUrl, options.method || 'GET', options.body, options.headers);
+        // Only log non-asset requests
+        const urlLower = url.toLowerCase();
+        const isAsset = /\.(css|js|woff|woff2|ttf|eot|otf|png|jpg|jpeg|gif|svg|ico|webp|mp4|mp3|pdf|map)$/i.test(urlLower);
+        if (!isAsset) {
+          logApiCall(proxiedUrl, options.method || 'GET', options.body, options.headers);
+        }
       }
     }
     
