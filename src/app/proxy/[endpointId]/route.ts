@@ -1,0 +1,223 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/database/prisma';
+import { validateProxyUrl } from '@/lib/proxy/validation';
+import { NotFoundError, handleError } from '@/lib/utils/errors';
+import { Prisma } from '@prisma/client';
+
+// This route handles the root proxy URL (e.g., /proxy/[endpointId])
+// It serves as a web proxy that renders the destination site
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ endpointId: string }> }
+) {
+  try {
+    const { endpointId } = await params;
+
+    // Get endpoint
+    const endpoint = await prisma.endpoint.findUnique({
+      where: { id: endpointId },
+    });
+
+    if (!endpoint) {
+      throw new NotFoundError('Endpoint');
+    }
+
+    if (endpoint.status !== 'ACTIVE') {
+      return NextResponse.json(
+        { error: 'Endpoint is not active' },
+        { status: 410 }
+      );
+    }
+
+    // Validate destination URL
+    const urlValidation = validateProxyUrl(endpoint.destinationUrl);
+    if (!urlValidation.valid) {
+      return NextResponse.json(
+        { error: urlValidation.error || 'Invalid destination URL' },
+        { status: 400 }
+      );
+    }
+
+    // Update last used timestamp
+    await prisma.endpoint.update({
+      where: { id: endpointId },
+      data: { lastUsedAt: new Date() },
+    });
+
+    // Fetch the destination page
+    const startTime = Date.now();
+    try {
+      const response = await fetch(endpoint.destinationUrl, {
+        headers: {
+          'User-Agent': request.headers.get('User-Agent') || 'Mozilla/5.0',
+          'Accept': request.headers.get('Accept') || 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': request.headers.get('Accept-Language') || 'en-US,en;q=0.9',
+        },
+      });
+
+      const html = await response.text();
+      const contentType = response.headers.get('Content-Type') || 'text/html';
+
+      // If it's HTML, rewrite URLs to go through proxy
+      if (contentType.includes('text/html')) {
+        const proxyBase = `/proxy/${endpointId}`;
+        const destinationBase = new URL(endpoint.destinationUrl).origin;
+        
+        // Rewrite URLs in HTML
+        const rewrittenHtml = rewriteHtmlUrls(html, destinationBase, proxyBase);
+
+        // Inject JavaScript to intercept API calls
+        const injectedHtml = injectApiInterceptor(rewrittenHtml, endpointId);
+
+        return new NextResponse(injectedHtml, {
+          status: response.status,
+          headers: {
+            'Content-Type': 'text/html',
+            'X-Proxy-For': endpoint.destinationUrl,
+          },
+        });
+      }
+
+      // For non-HTML content, return as-is
+      return new NextResponse(html, {
+        status: response.status,
+        headers: {
+          'Content-Type': contentType,
+        },
+      });
+    } catch (fetchError) {
+      return NextResponse.json(
+        { 
+          error: 'Failed to fetch destination page', 
+          details: fetchError instanceof Error ? fetchError.message : 'Unknown error' 
+        },
+        { status: 502 }
+      );
+    }
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode }
+      );
+    }
+
+    const handled = handleError(error);
+    return NextResponse.json(
+      { error: handled.message },
+      { status: handled.statusCode }
+    );
+  }
+}
+
+function rewriteHtmlUrls(html: string, destinationBase: string, proxyBase: string): string {
+  // Rewrite absolute URLs
+  html = html.replace(
+    new RegExp(`href=["'](${escapeRegex(destinationBase)}[^"']*)["']`, 'gi'),
+    (match, url) => {
+      const relativePath = url.replace(destinationBase, '');
+      return `href="${proxyBase}${relativePath}"`;
+    }
+  );
+
+  html = html.replace(
+    new RegExp(`src=["'](${escapeRegex(destinationBase)}[^"']*)["']`, 'gi'),
+    (match, url) => {
+      const relativePath = url.replace(destinationBase, '');
+      return `src="${proxyBase}${relativePath}"`;
+    }
+  );
+
+  // Rewrite fetch/API URLs in script tags (basic)
+  html = html.replace(
+    new RegExp(`fetch\\(["'](${escapeRegex(destinationBase)}[^"']*)["']`, 'gi'),
+    (match, url) => {
+      const relativePath = url.replace(destinationBase, '');
+      return `fetch("${proxyBase}${relativePath}"`;
+    }
+  );
+
+  return html;
+}
+
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function injectApiInterceptor(html: string, endpointId: string): string {
+  const interceptorScript = `
+<script>
+(function() {
+  const endpointId = '${endpointId}';
+  const proxyBase = '/proxy/' + endpointId;
+  
+  // Intercept fetch
+  const originalFetch = window.fetch;
+  window.fetch = function(url, options = {}) {
+    // If it's a relative URL or same origin, proxy it
+    let proxiedUrl = url;
+    if (typeof url === 'string') {
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        // Absolute URL - check if it's the destination
+        try {
+          const urlObj = new URL(url);
+          // For now, log all external API calls
+          logApiCall(url, options.method || 'GET', options.body, options.headers);
+        } catch (e) {
+          // Invalid URL, pass through
+        }
+      } else {
+        // Relative URL - already proxied by HTML rewriting
+        logApiCall(proxyBase + (url.startsWith('/') ? url : '/' + url), options.method || 'GET', options.body, options.headers);
+      }
+    }
+    
+    return originalFetch.apply(this, arguments);
+  };
+  
+  // Intercept XMLHttpRequest
+  const originalOpen = XMLHttpRequest.prototype.open;
+  const originalSend = XMLHttpRequest.prototype.send;
+  
+  XMLHttpRequest.prototype.open = function(method, url, ...args) {
+    this._method = method;
+    this._url = url;
+    return originalOpen.apply(this, [method, url, ...args]);
+  };
+  
+  XMLHttpRequest.prototype.send = function(body) {
+    if (this._url) {
+      logApiCall(this._url, this._method || 'GET', body, {});
+    }
+    return originalSend.apply(this, arguments);
+  };
+  
+  function logApiCall(url, method, body, headers) {
+    // Send to our API to log the call
+    fetch('/api/v1/proxy/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        endpointId: endpointId,
+        url: url,
+        method: method,
+        body: body,
+        headers: headers,
+        timestamp: new Date().toISOString()
+      })
+    }).catch(err => console.error('Failed to log API call:', err));
+  }
+})();
+</script>
+`;
+
+  // Inject before closing </body> or at end of <head>
+  if (html.includes('</body>')) {
+    return html.replace('</body>', interceptorScript + '</body>');
+  } else if (html.includes('</head>')) {
+    return html.replace('</head>', interceptorScript + '</head>');
+  } else {
+    return html + interceptorScript;
+  }
+}
+

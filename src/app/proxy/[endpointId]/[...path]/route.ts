@@ -75,7 +75,12 @@ async function handleProxyRequest(
     // Build target URL
     const targetPath = pathSegments.length > 0 ? `/${pathSegments.join('/')}` : '';
     const queryString = request.nextUrl.search;
-    const targetUrl = `${endpoint.destinationUrl}${targetPath}${queryString}`;
+    
+    // If destination URL ends with /, don't add extra /
+    const baseUrl = endpoint.destinationUrl.endsWith('/') 
+      ? endpoint.destinationUrl.slice(0, -1) 
+      : endpoint.destinationUrl;
+    const targetUrl = `${baseUrl}${targetPath}${queryString}`;
 
     // Update last used timestamp
     await prisma.endpoint.update({
