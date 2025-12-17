@@ -171,11 +171,18 @@ async function handleProxyRequest(
         }
       });
 
-      // Return response
-      return new NextResponse(responseBody, {
-        status: response.status,
-        headers: filteredHeaders,
-      });
+      // Return response with correct body type
+      if (isBinary || isAsset) {
+        return new NextResponse(responseBody as ArrayBuffer, {
+          status: response.status,
+          headers: filteredHeaders,
+        });
+      } else {
+        return new NextResponse(responseBody as string, {
+          status: response.status,
+          headers: filteredHeaders,
+        });
+      }
     } catch (fetchError) {
       // Log the error for debugging
       console.error('Proxy fetch error:', {
