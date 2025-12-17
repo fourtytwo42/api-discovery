@@ -189,21 +189,22 @@ function generateTypeScriptFromSchema(schema: unknown): string {
     return '  // Unknown type\n';
   }
 
-  const schemaObj = schema as Record<string, unknown>;
-  if (schemaObj.type === 'object' && schemaObj.properties) {
-    const props = schemaObj.properties as Record<string, unknown>;
-    let result = '';
-    Object.entries(props).forEach(([key, value]) => {
-      const propSchema = value as Record<string, unknown>;
-      const optional = schemaObj.required?.includes(key) ? '' : '?';
-      const type = propSchema.type === 'string' ? 'string' :
-                   propSchema.type === 'number' ? 'number' :
-                   propSchema.type === 'boolean' ? 'boolean' :
-                   propSchema.type === 'array' ? 'unknown[]' : 'unknown';
-      result += `  ${key}${optional}: ${type};\n`;
-    });
-    return result;
-  }
+    const schemaObj = schema as Record<string, unknown>;
+    if (schemaObj.type === 'object' && schemaObj.properties) {
+      const props = schemaObj.properties as Record<string, unknown>;
+      const required = Array.isArray(schemaObj.required) ? schemaObj.required as string[] : [];
+      let result = '';
+      Object.entries(props).forEach(([key, value]) => {
+        const propSchema = value as Record<string, unknown>;
+        const optional = required.includes(key) ? '' : '?';
+        const type = propSchema.type === 'string' ? 'string' :
+                     propSchema.type === 'number' ? 'number' :
+                     propSchema.type === 'boolean' ? 'boolean' :
+                     propSchema.type === 'array' ? 'unknown[]' : 'unknown';
+        result += `  ${key}${optional}: ${type};\n`;
+      });
+      return result;
+    }
 
   return '  // Complex type\n';
 }
