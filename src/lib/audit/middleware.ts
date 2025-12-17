@@ -9,8 +9,8 @@ export interface AuditLogData {
   resourceType?: string;
   resourceId?: string;
   details?: Record<string, unknown>;
-  ipAddress?: string;
-  userAgent?: string;
+  ipAddress?: string | null;
+  userAgent?: string | null;
 }
 
 export async function logAuditEvent(data: AuditLogData): Promise<void> {
