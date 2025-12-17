@@ -296,6 +296,30 @@ function injectApiInterceptor(html: string, endpointId: string): string {
     return originalSend.apply(this, arguments);
   };
   
+  // Intercept WebSocket connections
+  const originalWebSocket = window.WebSocket;
+  window.WebSocket = function(url, protocols) {
+    // If URL contains ws:// or wss://, rewrite it to use our proxy
+    if (typeof url === 'string' && (url.startsWith('ws://') || url.startsWith('wss://'))) {
+      try {
+        const urlObj = new URL(url);
+        // Extract path and query
+        const path = urlObj.pathname + urlObj.search;
+        // Rewrite to use our WebSocket proxy
+        // Use the same host but port 3001 for WebSocket server
+        const wsHost = (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + window.location.hostname + ':3001';
+        const proxiedUrl = wsHost + '/ws-proxy' + path + (urlObj.search ? '&' : '?') + 'endpointId=' + endpointId;
+        console.log('Proxying WebSocket:', url, '->', proxiedUrl);
+        return new originalWebSocket(proxiedUrl, protocols);
+      } catch (e) {
+        console.error('Failed to proxy WebSocket URL:', e);
+        // Fall back to original if rewriting fails
+        return new originalWebSocket(url, protocols);
+      }
+    }
+    return new originalWebSocket(url, protocols);
+  };
+  
   function logApiCall(url, method, body, headers) {
     // Send to our API to log the call
     fetch('/api/v1/proxy/log', {
