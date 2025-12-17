@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database/prisma';
-import { createProxyMiddleware } from 'http-proxy-middleware';
-import { captureRequest, captureResponse } from '@/lib/proxy/capture';
+import { Prisma } from '@prisma/client';
 import { validateProxyUrl } from '@/lib/proxy/validation';
 import { NotFoundError, handleError } from '@/lib/utils/errors';
-import http from 'http';
 
 export async function GET(
   request: NextRequest,
@@ -137,12 +135,12 @@ async function handleProxyRequest(
           protocol: targetUrlObj.protocol.replace(':', ''),
           requestHeaders: capturedRequest.headers,
           requestBody: requestBody?.substring(0, 50000), // Truncate if too large
-          requestBodyJson: requestBodyJson ? (requestBodyJson as unknown) : undefined,
-          queryParams: capturedRequest.queryParams,
+          requestBodyJson: requestBodyJson ? (requestBodyJson as Prisma.InputJsonValue) : undefined,
+          queryParams: capturedRequest.queryParams ? (capturedRequest.queryParams as Prisma.InputJsonValue) : undefined,
           responseStatus: response.status,
           responseHeaders: responseHeaders,
           responseBody: responseBody.substring(0, 50000), // Truncate if too large
-          responseBodyJson: responseBodyJson ? (responseBodyJson as Record<string, unknown>) : undefined,
+          responseBodyJson: responseBodyJson ? (responseBodyJson as Prisma.InputJsonValue) : undefined,
           duration: Date.now() - startTime,
         },
       });
