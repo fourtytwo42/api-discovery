@@ -297,22 +297,25 @@ function injectApiInterceptor(html: string, endpointId: string): string {
   };
   
   // Intercept WebSocket connections - MUST run before page scripts
+  // Intercept ALL WebSocket connections, regardless of destination
   const originalWebSocket = window.WebSocket;
   console.log('[API Discovery Proxy] Installing WebSocket interceptor, original WebSocket:', originalWebSocket);
   
   window.WebSocket = function(url, protocols) {
     console.log('[API Discovery Proxy] WebSocket constructor called:', url, protocols);
     
-    // If URL contains ws:// or wss://, rewrite it to use our proxy
+    // Intercept ALL WebSocket connections (ws:// or wss://)
     if (typeof url === 'string' && (url.startsWith('ws://') || url.startsWith('wss://'))) {
       try {
         const urlObj = new URL(url);
-        // Extract path and query
-        const path = urlObj.pathname + urlObj.search;
+        // Extract the full path including query string
+        const fullPath = urlObj.pathname + (urlObj.search || '');
+        
         // Rewrite to use our WebSocket proxy
         // Use the same host but port 3001 for WebSocket server
         const wsHost = (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + window.location.hostname + ':3001';
-        const proxiedUrl = wsHost + '/ws-proxy' + path + (urlObj.search ? '&' : '?') + 'endpointId=' + endpointId;
+        // Pass the original URL as a query parameter so our proxy knows where to connect
+        const proxiedUrl = wsHost + '/ws-proxy' + fullPath + (urlObj.search ? '&' : '?') + 'endpointId=' + endpointId + '&originalUrl=' + encodeURIComponent(url);
         console.log('[API Discovery Proxy] Proxying WebSocket:', url, '->', proxiedUrl);
         const ws = new originalWebSocket(proxiedUrl, protocols);
         

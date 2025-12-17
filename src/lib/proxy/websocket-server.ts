@@ -22,43 +22,52 @@ export class WebSocketProxyServer {
   }
 
   private setupHandlers() {
-    this.wss.on('connection', async (ws: WebSocket, request: IncomingMessage) => {
-      try {
-        const url = parse(request.url || '', true);
-        const endpointId = url.query.endpointId as string;
-        const path = url.pathname?.replace('/ws-proxy', '') || '';
+        this.wss.on('connection', async (ws: WebSocket, request: IncomingMessage) => {
+          try {
+            const url = parse(request.url || '', true);
+            const endpointId = url.query.endpointId as string;
+            const originalUrl = url.query.originalUrl as string | undefined;
+            const path = url.pathname?.replace('/ws-proxy', '') || '';
 
-        if (!endpointId) {
-          ws.close(1008, 'Missing endpointId');
-          return;
-        }
+            if (!endpointId) {
+              ws.close(1008, 'Missing endpointId');
+              return;
+            }
 
-        // Get endpoint
-        const endpoint = await prisma.endpoint.findUnique({
-          where: { id: endpointId },
-        });
+            // Get endpoint
+            const endpoint = await prisma.endpoint.findUnique({
+              where: { id: endpointId },
+            });
 
-        if (!endpoint) {
-          ws.close(1008, 'Endpoint not found');
-          return;
-        }
+            if (!endpoint) {
+              ws.close(1008, 'Endpoint not found');
+              return;
+            }
 
-        if (endpoint.status !== 'ACTIVE') {
-          ws.close(1008, 'Endpoint is not active');
-          return;
-        }
+            if (endpoint.status !== 'ACTIVE') {
+              ws.close(1008, 'Endpoint is not active');
+              return;
+            }
 
-        // Validate destination URL
-        const urlValidation = validateProxyUrl(endpoint.destinationUrl);
-        if (!urlValidation.valid) {
-          ws.close(1008, urlValidation.error || 'Invalid destination URL');
-          return;
-        }
-
-        // Build target WebSocket URL
-        const destinationUrl = new URL(endpoint.destinationUrl);
-        const wsProtocol = destinationUrl.protocol === 'https:' ? 'wss:' : 'ws:';
-        const targetWsUrl = `${wsProtocol}//${destinationUrl.host}${path}${url.search || ''}`;
+            // Build target WebSocket URL
+            // If originalUrl is provided, use it directly (allows proxying to any WebSocket URL)
+            // Otherwise, construct from endpoint destination URL
+            let targetWsUrl: string;
+            if (originalUrl) {
+              // Use the original WebSocket URL that the client wanted to connect to
+              targetWsUrl = decodeURIComponent(originalUrl);
+              console.log(`[WebSocket Proxy] Using original URL: ${targetWsUrl}`);
+            } else {
+              // Fallback: construct from endpoint destination URL
+              const urlValidation = validateProxyUrl(endpoint.destinationUrl);
+              if (!urlValidation.valid) {
+                ws.close(1008, urlValidation.error || 'Invalid destination URL');
+                return;
+              }
+              const destinationUrl = new URL(endpoint.destinationUrl);
+              const wsProtocol = destinationUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+              targetWsUrl = `${wsProtocol}//${destinationUrl.host}${path}${url.search || ''}`;
+            }
 
         // Create connection to target WebSocket
         const targetWs = new WebSocket(targetWsUrl);
