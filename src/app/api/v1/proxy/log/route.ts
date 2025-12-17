@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
         responseBody: null,
         responseBodyJson: null,
         duration: 0,
-        timestamp: timestamp ? new Date(timestamp) : new Date(),
+        timestamp: timestamp ? new Date(timestamp) : new Date()
       },
     });
 
