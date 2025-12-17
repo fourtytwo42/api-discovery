@@ -23,6 +23,10 @@ export async function POST(
       where: { id },
       include: {
         discoveredEndpoints: true,
+        endpointDocs: {
+          take: 1,
+          orderBy: { generatedAt: 'desc' },
+        },
       },
     });
 
