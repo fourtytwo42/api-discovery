@@ -483,9 +483,11 @@ function injectApiInterceptor(html: string, endpointId: string): string {
       
       // Rewrite to use our WebSocket proxy
       // Use the same host but port 3001 for WebSocket server
-      const wsHost = (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + window.location.hostname + ':3001';
+      var wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      var wsHost = wsProtocol + '//' + window.location.hostname + ':3001';
       // Pass the original URL as a query parameter so our proxy knows where to connect
-      const proxiedUrl = wsHost + '/ws-proxy' + fullPath + (urlObj.search ? '&' : '?') + 'endpointId=' + endpointId + '&originalUrl=' + encodeURIComponent(targetUrl);
+      var querySeparator = urlObj.search ? '&' : '?';
+      var proxiedUrl = wsHost + '/ws-proxy' + fullPath + querySeparator + 'endpointId=' + endpointId + '&originalUrl=' + encodeURIComponent(targetUrl);
       console.log('[API Discovery Proxy] Proxying WebSocket:', url, '->', proxiedUrl, '(target:', targetUrl + ')');
       const ws = new originalWebSocket(proxiedUrl, protocols);
       
