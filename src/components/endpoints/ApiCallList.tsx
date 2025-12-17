@@ -41,6 +41,42 @@ interface PayloadVariation {
   exampleTimestamp: string;
 }
 
+interface JwtInfo {
+  token: string;
+  header: Record<string, unknown>;
+  payload: Record<string, unknown>;
+  expiresAt: string | null;
+  issuedAt: string | null;
+  algorithm: string | null;
+  isValid: boolean;
+  error?: string;
+}
+
+interface SecurityHeaders {
+  authorization?: {
+    type: string;
+    value: string;
+    isJwt: boolean;
+    jwtInfo?: JwtInfo;
+  };
+  cors?: {
+    allowOrigin: string[];
+    allowMethods: string[];
+    allowHeaders: string[];
+    allowCredentials: boolean;
+    maxAge?: number;
+  };
+  security?: {
+    contentTypeOptions?: string;
+    frameOptions?: string;
+    xssProtection?: string;
+    strictTransportSecurity?: string;
+    referrerPolicy?: string;
+    permissionsPolicy?: string;
+  };
+  custom?: Record<string, string>;
+}
+
 interface ApiCallGroup {
   pattern: string;
   method: string;
@@ -53,6 +89,7 @@ interface ApiCallGroup {
   urlParameterVariations?: UrlParameterVariation[];
   queryParameterVariations?: QueryParameterVariation[];
   payloadVariations?: PayloadVariation[];
+  securityHeaders?: SecurityHeaders;
 }
 
 interface ApiCallListProps {
@@ -354,6 +391,223 @@ export default function ApiCallList({ endpointId, onSelectionChange }: ApiCallLi
                               </div>
                             </div>
                           ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Security Headers - JWT Token */}
+                    {group.securityHeaders?.authorization?.jwtInfo && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                          🔐 Authentication Token (JWT)
+                        </h4>
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 space-y-3">
+                          <div>
+                            <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                              Token (click to copy):
+                            </div>
+                            <code
+                              className="block bg-gray-100 dark:bg-gray-900 p-2 rounded text-xs break-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
+                              onClick={() => {
+                                navigator.clipboard.writeText(group.securityHeaders!.authorization!.jwtInfo!.token);
+                              }}
+                              title="Click to copy token"
+                            >
+                              {group.securityHeaders.authorization.jwtInfo.token}
+                            </code>
+                          </div>
+                          
+                          {group.securityHeaders.authorization.jwtInfo.expiresAt && (
+                            <div>
+                              <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                Expires:
+                              </div>
+                              <div className="text-sm text-gray-700 dark:text-gray-300">
+                                {new Date(group.securityHeaders.authorization.jwtInfo.expiresAt).toLocaleString()}
+                                {' '}
+                                {new Date(group.securityHeaders.authorization.jwtInfo.expiresAt) > new Date() ? (
+                                  <span className="text-green-600 dark:text-green-400">
+                                    (Valid for {Math.floor((new Date(group.securityHeaders.authorization.jwtInfo.expiresAt).getTime() - Date.now()) / 1000 / 60)} more minutes)
+                                  </span>
+                                ) : (
+                                  <span className="text-red-600 dark:text-red-400">(Expired)</span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {group.securityHeaders.authorization.jwtInfo.issuedAt && (
+                            <div>
+                              <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                Issued:
+                              </div>
+                              <div className="text-sm text-gray-700 dark:text-gray-300">
+                                {new Date(group.securityHeaders.authorization.jwtInfo.issuedAt).toLocaleString()}
+                              </div>
+                            </div>
+                          )}
+
+                          {group.securityHeaders.authorization.jwtInfo.algorithm && (
+                            <div>
+                              <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                Algorithm:
+                              </div>
+                              <code className="text-sm text-gray-700 dark:text-gray-300">
+                                {group.securityHeaders.authorization.jwtInfo.algorithm}
+                              </code>
+                            </div>
+                          )}
+
+                          <details className="mt-2">
+                            <summary className="text-xs text-gray-600 dark:text-gray-400 cursor-pointer hover:text-gray-800 dark:hover:text-gray-200">
+                              View Token Contents
+                            </summary>
+                            <div className="mt-2 space-y-2">
+                              <div>
+                                <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                  Header:
+                                </div>
+                                <pre className="bg-gray-100 dark:bg-gray-900 p-2 rounded text-xs overflow-x-auto">
+                                  {JSON.stringify(group.securityHeaders.authorization.jwtInfo.header, null, 2)}
+                                </pre>
+                              </div>
+                              <div>
+                                <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                  Payload:
+                                </div>
+                                <pre className="bg-gray-100 dark:bg-gray-900 p-2 rounded text-xs overflow-x-auto">
+                                  {JSON.stringify(group.securityHeaders.authorization.jwtInfo.payload, null, 2)}
+                                </pre>
+                              </div>
+                            </div>
+                          </details>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Security Headers - Other Auth */}
+                    {group.securityHeaders?.authorization && !group.securityHeaders.authorization.jwtInfo && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                          🔐 Authentication
+                        </h4>
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+                          <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                            Type: <code className="text-blue-600 dark:text-blue-400">{group.securityHeaders.authorization.type}</code>
+                          </div>
+                          <code className="text-xs text-gray-700 dark:text-gray-300 break-all">
+                            {group.securityHeaders.authorization.value}
+                          </code>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* CORS Headers */}
+                    {group.securityHeaders?.cors && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                          🌐 CORS Configuration
+                        </h4>
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700 space-y-2">
+                          {group.securityHeaders.cors.allowOrigin.length > 0 && (
+                            <div>
+                              <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                Allowed Origins:
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {group.securityHeaders.cors.allowOrigin.map((origin, idx) => (
+                                  <code key={idx} className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                                    {origin}
+                                  </code>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {group.securityHeaders.cors.allowMethods.length > 0 && (
+                            <div>
+                              <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                Allowed Methods:
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {group.securityHeaders.cors.allowMethods.map((method, idx) => (
+                                  <code key={idx} className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                                    {method}
+                                  </code>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {group.securityHeaders.cors.allowHeaders.length > 0 && (
+                            <div>
+                              <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                Allowed Headers:
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {group.securityHeaders.cors.allowHeaders.map((header, idx) => (
+                                  <code key={idx} className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                                    {header}
+                                  </code>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {group.securityHeaders.cors.allowCredentials && (
+                            <div className="text-xs text-gray-600 dark:text-gray-400">
+                              ✓ Credentials allowed
+                            </div>
+                          )}
+                          {group.securityHeaders.cors.maxAge && (
+                            <div className="text-xs text-gray-600 dark:text-gray-400">
+                              Max Age: {group.securityHeaders.cors.maxAge} seconds
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Security Headers */}
+                    {group.securityHeaders?.security && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                          🛡️ Security Headers
+                        </h4>
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700 space-y-2">
+                          {group.securityHeaders.security.contentTypeOptions && (
+                            <div className="text-xs">
+                              <span className="font-medium text-gray-600 dark:text-gray-400">X-Content-Type-Options:</span>{' '}
+                              <code className="text-gray-700 dark:text-gray-300">{group.securityHeaders.security.contentTypeOptions}</code>
+                            </div>
+                          )}
+                          {group.securityHeaders.security.frameOptions && (
+                            <div className="text-xs">
+                              <span className="font-medium text-gray-600 dark:text-gray-400">X-Frame-Options:</span>{' '}
+                              <code className="text-gray-700 dark:text-gray-300">{group.securityHeaders.security.frameOptions}</code>
+                            </div>
+                          )}
+                          {group.securityHeaders.security.xssProtection && (
+                            <div className="text-xs">
+                              <span className="font-medium text-gray-600 dark:text-gray-400">X-XSS-Protection:</span>{' '}
+                              <code className="text-gray-700 dark:text-gray-300">{group.securityHeaders.security.xssProtection}</code>
+                            </div>
+                          )}
+                          {group.securityHeaders.security.strictTransportSecurity && (
+                            <div className="text-xs">
+                              <span className="font-medium text-gray-600 dark:text-gray-400">Strict-Transport-Security:</span>{' '}
+                              <code className="text-gray-700 dark:text-gray-300">{group.securityHeaders.security.strictTransportSecurity}</code>
+                            </div>
+                          )}
+                          {group.securityHeaders.security.referrerPolicy && (
+                            <div className="text-xs">
+                              <span className="font-medium text-gray-600 dark:text-gray-400">Referrer-Policy:</span>{' '}
+                              <code className="text-gray-700 dark:text-gray-300">{group.securityHeaders.security.referrerPolicy}</code>
+                            </div>
+                          )}
+                          {group.securityHeaders.security.permissionsPolicy && (
+                            <div className="text-xs">
+                              <span className="font-medium text-gray-600 dark:text-gray-400">Permissions-Policy:</span>{' '}
+                              <code className="text-gray-700 dark:text-gray-300">{group.securityHeaders.security.permissionsPolicy}</code>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}

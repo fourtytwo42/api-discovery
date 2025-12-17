@@ -5,6 +5,7 @@ import { verifyToken } from '@/lib/auth/jwt';
 import { NotFoundError, AuthorizationError, handleError } from '@/lib/utils/errors';
 import { normalizeUrlPattern } from '@/lib/proxy/pattern-extraction';
 import { generateCompletion } from '@/lib/ai/groq-client';
+import { analyzeHeaders } from '@/lib/analysis/header-analysis';
 
 // Groq GPT OSS 20B supports up to 8192 tokens context window
 // We'll use 8000 max_tokens to leave room for the prompt
@@ -19,7 +20,7 @@ interface ApiCallExample {
   requestBodyJson: unknown;
   queryParams: Record<string, unknown> | null;
   responseStatus: number | null;
-  responseHeaders: Record<string, unknown> | null;
+  responseHeaders?: Record<string, unknown> | null;
   responseBody: string | null;
   responseBodyJson: unknown;
   timestamp: Date;
@@ -222,8 +223,22 @@ export async function POST(
 
       log('Selected examples for pattern', { pattern, method, exampleCount: examples.length });
 
+      // Analyze security headers from examples
+      const securityInfo = examples.map(example => 
+        analyzeHeaders(
+          example.requestHeaders || {},
+          example.responseHeaders || {}
+        )
+      );
+
       // Build comprehensive prompt
-      const prompt = buildDocumentationPrompt(endpoint.destinationUrl, pattern, method, examples);
+      const prompt = buildDocumentationPrompt(
+        endpoint.destinationUrl,
+        pattern,
+        method,
+        examples,
+        securityInfo
+      );
       log('Built prompt', { pattern, method, promptLength: prompt.length });
 
       try {
@@ -391,7 +406,8 @@ function buildDocumentationPrompt(
   baseUrl: string,
   pattern: string,
   method: string,
-  examples: ApiCallExample[]
+  examples: ApiCallExample[],
+  securityInfo: Array<ReturnType<typeof analyzeHeaders>>
 ): string {
   const examplesText = examples.map((example, index) => {
     const exampleData: Record<string, unknown> = {
@@ -420,6 +436,74 @@ function buildDocumentationPrompt(
 ${JSON.stringify(exampleData, null, 2)}`;
   }).join('\n\n');
 
+  // Build security information section
+  const securityText = securityInfo.map((sec, index) => {
+    const parts: string[] = [];
+    
+    if (sec.authorization) {
+      parts.push(`Authentication: ${sec.authorization.type}`);
+      if (sec.authorization.isJwt && sec.authorization.jwtInfo) {
+        const jwt = sec.authorization.jwtInfo;
+        parts.push(`  - JWT Token: ${jwt.token}`);
+        parts.push(`  - Algorithm: ${jwt.algorithm || 'unknown'}`);
+        if (jwt.expiresAt) {
+          parts.push(`  - Expires: ${jwt.expiresAt.toISOString()}`);
+        }
+        if (jwt.issuedAt) {
+          parts.push(`  - Issued: ${jwt.issuedAt.toISOString()}`);
+        }
+        parts.push(`  - Payload: ${JSON.stringify(jwt.payload, null, 2)}`);
+      } else {
+        parts.push(`  - Value: ${sec.authorization.value}`);
+      }
+    }
+
+    if (sec.cors) {
+      parts.push(`CORS Configuration:`);
+      if (sec.cors.allowOrigin.length > 0) {
+        parts.push(`  - Allowed Origins: ${sec.cors.allowOrigin.join(', ')}`);
+      }
+      if (sec.cors.allowMethods.length > 0) {
+        parts.push(`  - Allowed Methods: ${sec.cors.allowMethods.join(', ')}`);
+      }
+      if (sec.cors.allowHeaders.length > 0) {
+        parts.push(`  - Allowed Headers: ${sec.cors.allowHeaders.join(', ')}`);
+      }
+      if (sec.cors.allowCredentials) {
+        parts.push(`  - Credentials: Allowed`);
+      }
+      if (sec.cors.maxAge) {
+        parts.push(`  - Max Age: ${sec.cors.maxAge} seconds`);
+      }
+    }
+
+    if (sec.security) {
+      parts.push(`Security Headers:`);
+      if (sec.security.contentTypeOptions) {
+        parts.push(`  - X-Content-Type-Options: ${sec.security.contentTypeOptions}`);
+      }
+      if (sec.security.frameOptions) {
+        parts.push(`  - X-Frame-Options: ${sec.security.frameOptions}`);
+      }
+      if (sec.security.xssProtection) {
+        parts.push(`  - X-XSS-Protection: ${sec.security.xssProtection}`);
+      }
+      if (sec.security.strictTransportSecurity) {
+        parts.push(`  - Strict-Transport-Security: ${sec.security.strictTransportSecurity}`);
+      }
+      if (sec.security.referrerPolicy) {
+        parts.push(`  - Referrer-Policy: ${sec.security.referrerPolicy}`);
+      }
+      if (sec.security.permissionsPolicy) {
+        parts.push(`  - Permissions-Policy: ${sec.security.permissionsPolicy}`);
+      }
+    }
+
+    return parts.length > 0 ? `Security Info for Example ${index + 1}:\n${parts.join('\n')}` : '';
+  }).filter(text => text.length > 0).join('\n\n');
+
+  const securitySection = securityText ? `\n\nSecurity Information:\n${securityText}\n` : '';
+
   return `You are an API documentation expert. Generate comprehensive, professional API documentation for the following endpoint.
 
 Base URL: ${baseUrl}
@@ -428,25 +512,33 @@ HTTP Method: ${method}
 
 Here are ${examples.length} example API call(s) with their request and response data:
 
-${examplesText}
+${examplesText}${securitySection}
 
 Please generate detailed API documentation in Markdown format that includes:
 
 1. **Endpoint Overview**: A clear description of what this endpoint does
 2. **HTTP Method and Path**: The method and normalized path pattern
-3. **Request Details**:
-   - Headers (required and optional)
+3. **Authentication**:
+   - Authentication method required (if any)
+   - JWT token details (if JWT is used): token format, expiration, payload contents
+   - How to obtain and use authentication tokens
+   - Token expiration and renewal information
+4. **Request Details**:
+   - Headers (required and optional, including authentication headers)
    - Query Parameters (if any)
    - Request Body Schema (if applicable)
-   - Example request
-4. **Response Details**:
+   - Example request with full headers
+5. **Response Details**:
    - Response status codes and their meanings
-   - Response headers
+   - Response headers (including CORS and security headers)
    - Response body schema
    - Example responses for each status code
-5. **Authentication**: Note if authentication appears to be required based on the examples
-6. **Usage Examples**: Code examples showing how to call this endpoint
-7. **Error Handling**: Common error responses and how to handle them
+6. **CORS Configuration**: CORS settings if applicable (allowed origins, methods, headers, credentials)
+7. **Security Headers**: Security-related headers returned by the API
+8. **Usage Examples**: Code examples showing how to call this endpoint with proper authentication
+9. **Error Handling**: Common error responses and how to handle them
+
+IMPORTANT: If JWT tokens are used, include the actual token in the documentation so developers can use it, along with expiration information and what data the token contains.
 
 Make the documentation clear, professional, and useful for developers who want to integrate with this API. Use proper Markdown formatting with headers, code blocks, and lists.
 

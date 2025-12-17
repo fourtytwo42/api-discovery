@@ -9,6 +9,7 @@ import {
   groupQueryParameterVariations,
   groupPayloadVariations,
 } from '@/lib/analysis/url-parameter-extraction';
+import { groupSecurityHeaders } from '@/lib/analysis/header-analysis';
 
 export async function GET(
   request: NextRequest,
@@ -83,6 +84,7 @@ export async function GET(
         requestBody: true,
         requestBodyJson: true,
         queryParams: true,
+        responseHeaders: true,
         responseBody: true,
         responseBodyJson: true,
       },
@@ -161,6 +163,14 @@ export async function GET(
           )
         : [];
 
+      // Analyze security headers
+      const securityHeaders = groupSecurityHeaders(
+        sortedCalls.map(call => ({
+          requestHeaders: call.requestHeaders as Record<string, unknown>,
+          responseHeaders: call.responseHeaders as Record<string, unknown> | undefined,
+        }))
+      );
+
       return {
         pattern,
         method,
@@ -176,6 +186,7 @@ export async function GET(
         urlParameterVariations: urlParamVariations,
         queryParameterVariations: queryParamVariations,
         payloadVariations: payloadVariations,
+        securityHeaders: securityHeaders,
       };
     });
 
