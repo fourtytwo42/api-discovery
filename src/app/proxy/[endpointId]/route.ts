@@ -288,8 +288,20 @@ function injectApiInterceptor(html: string, endpointId: string): string {
   
   XMLHttpRequest.prototype.open = function(method, url, ...args) {
     this._method = method;
-    this._url = url;
-    return originalOpen.apply(this, [method, url, ...args]);
+    this._originalUrl = url;
+    
+    // Rewrite relative URLs to go through proxy
+    let proxiedUrl = url;
+    if (typeof url === 'string' && !url.startsWith('http://') && !url.startsWith('https://')) {
+      const relativePath = url.startsWith('/') ? url : '/' + url;
+      proxiedUrl = proxyBase + relativePath;
+      logApiCall(proxiedUrl, method, null, {});
+    } else {
+      logApiCall(url, method, null, {});
+    }
+    
+    this._url = proxiedUrl;
+    return originalOpen.apply(this, [method, proxiedUrl, ...args]);
   };
   
   XMLHttpRequest.prototype.send = function(body) {
