@@ -195,10 +195,21 @@ function rewriteHtmlUrls(html: string, destinationBase: string, proxyBase: strin
     }
   );
 
-  // Rewrite URLs in style attributes
+  // Rewrite URLs in style attributes (including background-image)
   html = html.replace(
     new RegExp(`(style=["'][^"']*url\\(["']?)(${escapeRegex(destinationOrigin)})([^"']*)(["']?\\))`, 'gi'),
     (match, prefix, origin, path, suffix) => {
+      return `${prefix}${proxyBase}${path}${suffix}`;
+    }
+  );
+  
+  // Rewrite relative URLs in style attributes (background-image, etc.)
+  html = html.replace(
+    /(style=["'][^"']*url\\(["']?)(\/[^"']*)(["']?\\))/gi,
+    (match, prefix, path, suffix) => {
+      if (path.startsWith('/proxy/') || path.startsWith('http://') || path.startsWith('https://') || path.startsWith('//') || path.startsWith('data:')) {
+        return match;
+      }
       return `${prefix}${proxyBase}${path}${suffix}`;
     }
   );

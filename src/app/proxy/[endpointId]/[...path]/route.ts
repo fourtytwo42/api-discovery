@@ -72,18 +72,20 @@ async function handleProxyRequest(
       );
     }
 
-    // Build target URL
-    const targetPath = pathSegments.length > 0 ? `/${pathSegments.join('/')}` : '';
-    const queryString = request.nextUrl.search;
-    
-    // Normalize destination URL (remove trailing slash)
-    let baseUrl = endpoint.destinationUrl.trim();
-    if (baseUrl.endsWith('/')) {
-      baseUrl = baseUrl.slice(0, -1);
-    }
-    
-    // Construct target URL
-    const targetUrl = `${baseUrl}${targetPath}${queryString}`;
+        // Build target URL
+        const targetPath = pathSegments.length > 0 ? `/${pathSegments.join('/')}` : '';
+        const queryString = request.nextUrl.search;
+        
+        // Normalize destination URL (remove trailing slash)
+        let baseUrl = endpoint.destinationUrl.trim();
+        if (baseUrl.endsWith('/')) {
+          baseUrl = baseUrl.slice(0, -1);
+        }
+        
+        // Construct target URL - handle empty query string properly
+        const targetUrl = queryString 
+          ? `${baseUrl}${targetPath}${queryString}`
+          : `${baseUrl}${targetPath}`;
 
     // Update last used timestamp
     await prisma.endpoint.update({
