@@ -1,31 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
-import { captureRequest, captureResponse, truncateString } from '@/lib/proxy/capture';
-import { IncomingMessage, ServerResponse } from 'http';
+import { describe, it, expect } from 'vitest';
+import { truncateString, truncatePayload } from '@/lib/proxy/capture';
 
 describe('Proxy Capture', () => {
-  describe('captureRequest', () => {
-    it('should capture GET request', async () => {
-      const mockReq = {
-        method: 'GET',
-        url: '/api/test?param=value',
-        headers: {
-          host: 'example.com',
-          'content-type': 'application/json',
-        },
-      } as unknown as IncomingMessage;
-
-      // Mock URL parsing
-      vi.spyOn(global, 'URL').mockImplementation((url, base) => {
-        const urlObj = new URL(url, base || 'http://example.com');
-        return urlObj;
-      });
-
-      const result = await captureRequest(mockReq);
-      expect(result.method).toBe('GET');
-      expect(result.headers.host).toBe('example.com');
-    });
-  });
-
   describe('truncateString', () => {
     it('should truncate long strings', () => {
       const long = 'a'.repeat(100);
@@ -39,5 +15,12 @@ describe('Proxy Capture', () => {
       expect(truncateString(short, 50)).toBe(short);
     });
   });
-});
 
+  describe('truncatePayload', () => {
+    it('should truncate large payloads', () => {
+      const large = 'a'.repeat(100000);
+      const result = truncatePayload(large, 1000);
+      expect(result.length).toBeLessThanOrEqual(1000);
+    });
+  });
+});

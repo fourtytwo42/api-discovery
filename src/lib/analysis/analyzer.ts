@@ -59,7 +59,7 @@ export async function analyzeEndpoint(endpointId: string): Promise<AnalysisResul
 
     // Infer response schemas by status code
     const responseSchemas: Record<string, unknown> = {};
-    const callsByStatus = new Map<number, typeof patternCalls>();
+    const callsByStatus = new Map<number, Array<typeof patternCalls[0]>>();
     patternCalls.forEach((call) => {
       if (call.responseStatus) {
         if (!callsByStatus.has(call.responseStatus)) {
@@ -72,7 +72,7 @@ export async function analyzeEndpoint(endpointId: string): Promise<AnalysisResul
     callsByStatus.forEach((calls, status) => {
       const responseBodies = calls
         .map((call) => call.responseBodyJson)
-        .filter((body): body is unknown => body !== null && body !== undefined);
+        .filter((body) => body !== null && body !== undefined) as unknown[];
       if (responseBodies.length > 0) {
         responseSchemas[String(status)] = inferSchema(responseBodies);
       }
@@ -92,8 +92,8 @@ export async function analyzeEndpoint(endpointId: string): Promise<AnalysisResul
     return {
       pattern: pattern.pattern,
       methods: pattern.methods,
-      requestSchema: requestSchema ? (requestSchema as Prisma.InputJsonValue) : undefined,
-      responseSchemas: Object.keys(responseSchemas).length > 0 ? (responseSchemas as Prisma.InputJsonValue) : undefined,
+      requestSchema: requestSchema ? (requestSchema as unknown as Prisma.InputJsonValue) : undefined,
+      responseSchemas: Object.keys(responseSchemas).length > 0 ? (responseSchemas as unknown as Prisma.InputJsonValue) : undefined,
       patterns,
     };
   });
