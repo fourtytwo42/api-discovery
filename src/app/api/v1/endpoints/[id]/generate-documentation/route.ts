@@ -39,6 +39,19 @@ export async function POST(
     log('Starting documentation generation');
     const { id: endpointId } = await params;
 
+    // Parse request body for optional pattern filter
+    let requestedPatterns: string[] | undefined;
+    try {
+      const body = await request.json();
+      requestedPatterns = body.patterns && Array.isArray(body.patterns) && body.patterns.length > 0
+        ? body.patterns
+        : undefined;
+      log('Request patterns filter', { patterns: requestedPatterns });
+    } catch {
+      // No body or invalid JSON - proceed without filter
+      log('No pattern filter provided, will generate for all patterns');
+    }
+
     // Verify authentication
     const cookieStore = await cookies();
     const token = cookieStore.get('token');
@@ -152,6 +165,25 @@ export async function POST(
 
     log('Grouped API calls into patterns', { patternCount: groupedCalls.size });
 
+    // Filter patterns if requested
+    const patternsToProcess = requestedPatterns
+      ? Array.from(groupedCalls.keys()).filter(key => requestedPatterns!.includes(key))
+      : Array.from(groupedCalls.keys());
+
+    if (requestedPatterns && patternsToProcess.length === 0) {
+      log('No matching patterns found for requested patterns', { requestedPatterns });
+      return NextResponse.json(
+        { error: 'None of the requested patterns were found in the API calls.' },
+        { status: 400 }
+      );
+    }
+
+    log('Patterns to process', { 
+      total: groupedCalls.size,
+      requested: requestedPatterns?.length || 'all',
+      toProcess: patternsToProcess.length,
+    });
+
     // Generate documentation for each unique API pattern
     const documentationResults: Array<{
       pattern: string;
@@ -161,7 +193,13 @@ export async function POST(
       error?: string;
     }> = [];
 
-    for (const [groupKey, calls] of groupedCalls.entries()) {
+    for (const groupKey of patternsToProcess) {
+      const calls = groupedCalls.get(groupKey);
+      if (!calls) {
+        log('Skipping missing pattern', { groupKey });
+        continue;
+      }
+
       const [method, pattern] = groupKey.split(' ', 2);
       log('Processing pattern', { pattern, method, callCount: calls.length });
 

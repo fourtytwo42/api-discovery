@@ -26,14 +26,16 @@ interface ApiCallGroup {
 
 interface ApiCallListProps {
   endpointId: string;
+  onSelectionChange?: (selectedPatterns: string[]) => void;
 }
 
-export default function ApiCallList({ endpointId }: ApiCallListProps) {
+export default function ApiCallList({ endpointId, onSelectionChange }: ApiCallListProps) {
   const [grouped, setGrouped] = useState<ApiCallGroup[]>([]);
   const [totalCalls, setTotalCalls] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [selectedPatterns, setSelectedPatterns] = useState<Set<string>>(new Set());
 
   const fetchApiCalls = async () => {
     try {
@@ -68,6 +70,42 @@ export default function ApiCallList({ endpointId }: ApiCallListProps) {
     }
     setExpandedGroups(newExpanded);
   };
+
+  const toggleSelection = (pattern: string) => {
+    const newSelected = new Set(selectedPatterns);
+    if (newSelected.has(pattern)) {
+      newSelected.delete(pattern);
+    } else {
+      newSelected.add(pattern);
+    }
+    setSelectedPatterns(newSelected);
+    if (onSelectionChange) {
+      onSelectionChange(Array.from(newSelected));
+    }
+  };
+
+  const selectAll = () => {
+    const allPatterns = grouped.map(g => g.pattern);
+    const newSelected = new Set(allPatterns);
+    setSelectedPatterns(newSelected);
+    if (onSelectionChange) {
+      onSelectionChange(Array.from(newSelected));
+    }
+  };
+
+  const selectNone = () => {
+    setSelectedPatterns(new Set());
+    if (onSelectionChange) {
+      onSelectionChange([]);
+    }
+  };
+
+  // Notify parent of selection changes
+  useEffect(() => {
+    if (onSelectionChange) {
+      onSelectionChange(Array.from(selectedPatterns));
+    }
+  }, [selectedPatterns, onSelectionChange]);
 
   if (loading) {
     return (
@@ -125,51 +163,85 @@ export default function ApiCallList({ endpointId }: ApiCallListProps) {
     }
   };
 
+  const allSelected = grouped.length > 0 && selectedPatterns.size === grouped.length;
+  const someSelected = selectedPatterns.size > 0 && selectedPatterns.size < grouped.length;
+
   return (
     <Card title={`API Endpoints (${grouped.length} unique, ${totalCalls} total calls)`}>
+      {/* Selection Controls */}
+      {grouped.length > 0 && (
+        <div className="mb-4 flex items-center gap-2 pb-3 border-b border-gray-200 dark:border-gray-700">
+          <button
+            onClick={allSelected ? selectNone : selectAll}
+            className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium"
+          >
+            {allSelected ? 'Deselect All' : 'Select All'}
+          </button>
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            {selectedPatterns.size > 0 && `(${selectedPatterns.size} selected)`}
+          </span>
+        </div>
+      )}
+
       <div className="space-y-2">
         {grouped.map((group) => {
           const isExpanded = expandedGroups.has(group.pattern);
+          const isSelected = selectedPatterns.has(group.pattern);
           const [method, ...pathParts] = group.pattern.split(' ');
           const path = pathParts.join(' ');
 
           return (
             <div
               key={group.pattern}
-              className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
+              className={`border rounded-lg overflow-hidden transition-colors ${
+                isSelected
+                  ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-gray-200 dark:border-gray-700'
+              }`}
             >
               {/* Group Header */}
-              <button
-                onClick={() => toggleGroup(group.pattern)}
-                className="w-full p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <span className="text-gray-500 flex-shrink-0 text-lg">
-                      {isExpanded ? '▼' : '▶'}
-                    </span>
-                    <span
-                      className={`px-2 py-1 rounded text-xs font-semibold ${getMethodColor(method)}`}
-                    >
-                      {method}
-                    </span>
-                    <code className="text-sm text-gray-700 dark:text-gray-300 truncate flex-1">
-                      {path}
-                    </code>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400 flex-shrink-0">
-                    <span className="font-semibold">{group.count} calls</span>
-                    {group.mostCommonStatus && (
-                      <span className={getStatusColor(group.mostCommonStatus)}>
-                        {group.mostCommonStatus}
+              <div className="flex items-center gap-2">
+                {/* Checkbox */}
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => toggleSelection(group.pattern)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="ml-3 w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+                />
+                {/* Expand/Collapse Button */}
+                <button
+                  onClick={() => toggleGroup(group.pattern)}
+                  className="flex-1 p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <span className="text-gray-500 flex-shrink-0 text-lg">
+                        {isExpanded ? '▼' : '▶'}
                       </span>
-                    )}
-                    {group.avgDuration !== null && (
-                      <span>~{group.avgDuration}ms avg</span>
-                    )}
+                      <span
+                        className={`px-2 py-1 rounded text-xs font-semibold ${getMethodColor(method)}`}
+                      >
+                        {method}
+                      </span>
+                      <code className="text-sm text-gray-700 dark:text-gray-300 truncate flex-1">
+                        {path}
+                      </code>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400 flex-shrink-0">
+                      <span className="font-semibold">{group.count} calls</span>
+                      {group.mostCommonStatus && (
+                        <span className={getStatusColor(group.mostCommonStatus)}>
+                          {group.mostCommonStatus}
+                        </span>
+                      )}
+                      {group.avgDuration !== null && (
+                        <span>~{group.avgDuration}ms avg</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </button>
+                </button>
+              </div>
 
               {/* Expanded Calls List */}
               {isExpanded && (

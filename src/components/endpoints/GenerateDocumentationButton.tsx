@@ -5,11 +5,13 @@ import Button from '@/components/ui/button';
 
 interface GenerateDocumentationButtonProps {
   endpointId: string;
+  selectedPatterns?: string[];
   onSuccess?: () => void;
 }
 
 export default function GenerateDocumentationButton({
   endpointId,
+  selectedPatterns,
   onSuccess,
 }: GenerateDocumentationButtonProps) {
   const [loading, setLoading] = useState(false);
@@ -34,6 +36,9 @@ export default function GenerateDocumentationButton({
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          patterns: selectedPatterns && selectedPatterns.length > 0 ? selectedPatterns : undefined,
+        }),
       });
 
       const data = await response.json();
@@ -66,11 +71,16 @@ export default function GenerateDocumentationButton({
     }
   };
 
+  const hasSelection = selectedPatterns && selectedPatterns.length > 0;
+  const buttonText = hasSelection
+    ? `📚 Generate Documentation (${selectedPatterns.length} selected)`
+    : '📚 Generate Documentation for All';
+
   return (
     <div className="space-y-4">
       <Button
         onClick={handleGenerate}
-        disabled={loading}
+        disabled={loading || (hasSelection && selectedPatterns.length === 0)}
         className="w-full sm:w-auto"
       >
         {loading ? (
@@ -79,9 +89,14 @@ export default function GenerateDocumentationButton({
             Generating Documentation...
           </>
         ) : (
-          '📚 Generate Documentation with AI'
+          buttonText
         )}
       </Button>
+      {hasSelection && (
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          {selectedPatterns.length} endpoint pattern{selectedPatterns.length !== 1 ? 's' : ''} selected
+        </p>
+      )}
 
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">

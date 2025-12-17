@@ -1,13 +1,11 @@
 import { notFound, redirect } from 'next/navigation';
-import DocumentationViewer from '@/components/documentation/DocumentationViewer';
 import Button from '@/components/ui/button';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/database/prisma';
 import { verifyToken } from '@/lib/auth/jwt';
 import ProxyUrlDisplay from '@/components/endpoints/ProxyUrlDisplay';
-import ApiCallList from '@/components/endpoints/ApiCallList';
-import GenerateDocumentationButton from '@/components/endpoints/GenerateDocumentationButton';
+import ApiCallListWithSelection from '@/components/endpoints/ApiCallListWithSelection';
 
 async function getEndpoint(id: string) {
   try {
@@ -93,18 +91,7 @@ export default async function EndpointDetailPage({
         <ProxyUrlDisplay proxyUrl={endpoint.proxyUrl} />
       </div>
 
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold mb-4">API Calls</h2>
-            <ApiCallList endpointId={id} />
-          </div>
-
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">Documentation</h2>
-              <GenerateDocumentationButton endpointId={id} />
-            </div>
-            <DocumentationViewer endpointId={id} />
-          </div>
+          <ApiCallListWithSelection endpointId={id} />
         </div>
       );
     }
