@@ -76,6 +76,26 @@ async function handleProxyRequest(
         const targetPath = pathSegments.length > 0 ? `/${pathSegments.join('/')}` : '';
         const queryString = request.nextUrl.search;
         
+        // Handle Cloudflare endpoints - return success response without proxying
+        const targetPathLower = targetPath.toLowerCase();
+        const isCloudflare = targetPathLower.includes('/cdn-cgi/') ||
+                             targetPathLower.includes('cloudflare') ||
+                             targetPathLower.includes('cf-');
+        
+        if (isCloudflare) {
+          // Return empty success response for Cloudflare endpoints
+          // These are internal Cloudflare endpoints (RUM, challenge, etc.) that don't need to be proxied
+          return NextResponse.json({ success: true }, { 
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+              'Access-Control-Allow-Headers': 'Content-Type',
+            },
+          });
+        }
+        
         // Normalize destination URL (remove trailing slash)
         let baseUrl = endpoint.destinationUrl.trim();
         if (baseUrl.endsWith('/')) {

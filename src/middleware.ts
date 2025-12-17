@@ -16,6 +16,13 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
+  // Handle Cloudflare endpoints - return success response (these are just analytics/monitoring)
+  if (pathname.startsWith('/cdn-cgi/')) {
+    // Return empty success response for Cloudflare endpoints
+    // These are internal Cloudflare endpoints (RUM, challenge, etc.) that don't need to be proxied
+    return NextResponse.json({ success: true }, { status: 200 });
+  }
+
   // Handle root-level image/asset requests - check if user has an active proxy session
   // Look for common image/asset file extensions at root level
   const isRootAsset = /^\/([^/]+\.(png|jpg|jpeg|gif|svg|ico|webp|css|js|woff|woff2|ttf|eot|otf|mp4|mp3|pdf|map))(\?.*)?$/i.test(pathname);
