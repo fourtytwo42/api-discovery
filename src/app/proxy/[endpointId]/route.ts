@@ -258,25 +258,28 @@ function injectApiInterceptor(html: string, endpointId: string): string {
   // Intercept fetch
   const originalFetch = window.fetch;
   window.fetch = function(url, options = {}) {
-    // If it's a relative URL or same origin, proxy it
     let proxiedUrl = url;
     if (typeof url === 'string') {
       if (url.startsWith('http://') || url.startsWith('https://')) {
         // Absolute URL - check if it's the destination
         try {
           const urlObj = new URL(url);
-          // For now, log all external API calls
+          // Log external API calls
           logApiCall(url, options.method || 'GET', options.body, options.headers);
         } catch (e) {
           // Invalid URL, pass through
         }
       } else {
-        // Relative URL - already proxied by HTML rewriting
-        logApiCall(proxyBase + (url.startsWith('/') ? url : '/' + url), options.method || 'GET', options.body, options.headers);
+        // Relative URL - needs to be proxied
+        // Rewrite to go through our proxy
+        const relativePath = url.startsWith('/') ? url : '/' + url;
+        proxiedUrl = proxyBase + relativePath;
+        logApiCall(proxiedUrl, options.method || 'GET', options.body, options.headers);
       }
     }
     
-    return originalFetch.apply(this, arguments);
+    // Use the proxied URL if we rewrote it
+    return originalFetch.call(this, proxiedUrl, options);
   };
   
   // Intercept XMLHttpRequest
