@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true }); // Return 200 to prevent retries
     }
 
-    // Skip logging for asset requests to reduce memory usage
+    // Skip logging for asset requests and Cloudflare endpoints
     const urlLower = url.toLowerCase();
     const isAsset = /\.(css|js|woff|woff2|ttf|eot|otf|png|jpg|jpeg|gif|svg|ico|webp|mp4|mp3|pdf|map)$/i.test(urlLower) ||
                     urlLower.includes('/_next/') ||
@@ -22,8 +22,13 @@ export async function POST(request: NextRequest) {
                     urlLower.includes('/images/') ||
                     urlLower.includes('/fonts/');
     
-    if (isAsset) {
-      return NextResponse.json({ success: true, skipped: 'asset' });
+    // Skip Cloudflare-specific endpoints (challenge, rum, etc.)
+    const isCloudflare = urlLower.includes('/cdn-cgi/') ||
+                         urlLower.includes('cloudflare') ||
+                         urlLower.includes('cf-');
+    
+    if (isAsset || isCloudflare) {
+      return NextResponse.json({ success: true, skipped: isAsset ? 'asset' : 'cloudflare' });
     }
 
     // Verify endpoint exists (but don't fail if it doesn't)

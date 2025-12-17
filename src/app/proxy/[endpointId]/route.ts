@@ -340,10 +340,13 @@ function injectApiInterceptor(html: string, endpointId: string): string {
         // Rewrite to go through our proxy
         const relativePath = url.startsWith('/') ? url : '/' + url;
         proxiedUrl = proxyBase + relativePath;
-        // Only log non-asset requests
+        // Only log non-asset and non-Cloudflare requests
         const urlLower = url.toLowerCase();
         const isAsset = /\.(css|js|woff|woff2|ttf|eot|otf|png|jpg|jpeg|gif|svg|ico|webp|mp4|mp3|pdf|map)$/i.test(urlLower);
-        if (!isAsset) {
+        const isCloudflare = urlLower.includes('/cdn-cgi/') ||
+                             urlLower.includes('cloudflare') ||
+                             urlLower.includes('cf-');
+        if (!isAsset && !isCloudflare) {
           logApiCall(proxiedUrl, options.method || 'GET', options.body, options.headers);
         }
       }
@@ -377,7 +380,15 @@ function injectApiInterceptor(html: string, endpointId: string): string {
   
   XMLHttpRequest.prototype.send = function(body) {
     if (this._url) {
-      logApiCall(this._url, this._method || 'GET', body, {});
+      // Only log non-asset and non-Cloudflare requests
+      const urlLower = this._url.toLowerCase();
+      const isAsset = /\.(css|js|woff|woff2|ttf|eot|otf|png|jpg|jpeg|gif|svg|ico|webp|mp4|mp3|pdf|map)$/i.test(urlLower);
+      const isCloudflare = urlLower.includes('/cdn-cgi/') ||
+                           urlLower.includes('cloudflare') ||
+                           urlLower.includes('cf-');
+      if (!isAsset && !isCloudflare) {
+        logApiCall(this._url, this._method || 'GET', body, {});
+      }
     }
     return originalSend.apply(this, arguments);
   };
@@ -455,7 +466,7 @@ function injectApiInterceptor(html: string, endpointId: string): string {
         return;
       }
       
-      // Skip logging for asset requests to reduce memory usage
+      // Skip logging for asset requests and Cloudflare endpoints
       const urlLower = (url || '').toLowerCase();
       const isAsset = /\.(css|js|woff|woff2|ttf|eot|otf|png|jpg|jpeg|gif|svg|ico|webp|mp4|mp3|pdf|map|woff2)$/i.test(urlLower) ||
                       urlLower.includes('/_next/') ||
@@ -472,8 +483,13 @@ function injectApiInterceptor(html: string, endpointId: string): string {
                       urlLower.includes('/ga/') ||
                       urlLower.includes('/google-analytics');
       
-      if (isAsset) {
-        return; // Skip logging assets
+      // Skip Cloudflare-specific endpoints (challenge, rum, etc.)
+      const isCloudflare = urlLower.includes('/cdn-cgi/') ||
+                           urlLower.includes('cloudflare') ||
+                           urlLower.includes('cf-');
+      
+      if (isAsset || isCloudflare) {
+        return; // Skip logging assets and Cloudflare endpoints
       }
       
       // Skip if we've already logged this exact URL recently

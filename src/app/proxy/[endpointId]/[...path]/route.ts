@@ -133,6 +133,12 @@ async function handleProxyRequest(
                       /font\/woff/i.test(contentType) ||
                       /font\/woff2/i.test(contentType);
       
+      // Skip Cloudflare-specific endpoints (challenge, rum, etc.)
+      const targetPathLower = targetPath.toLowerCase();
+      const isCloudflare = targetPathLower.includes('/cdn-cgi/') ||
+                           targetPathLower.includes('cloudflare') ||
+                           targetPathLower.includes('cf-');
+      
       // Get response body as appropriate type
       let responseBody: string | ArrayBuffer;
       let responseBodyText: string | undefined;
@@ -160,8 +166,8 @@ async function handleProxyRequest(
         responseHeaders[key] = value;
       });
 
-      // Capture API call - only for non-asset requests
-      if (!isAsset) {
+      // Capture API call - only for non-asset and non-Cloudflare requests
+      if (!isAsset && !isCloudflare) {
         let requestBody: string | undefined;
         let requestBodyJson: unknown;
         if (method !== 'GET' && method !== 'HEAD') {
@@ -246,9 +252,13 @@ async function handleProxyRequest(
         stack: fetchError instanceof Error ? fetchError.stack : undefined,
       });
 
-      // Store error as API call (only for non-asset requests to avoid spam)
-      const isAssetRequest = /\.(css|js|woff|woff2|ttf|eot|png|jpg|jpeg|gif|svg|ico|webp)$/i.test(targetPath);
-      if (!isAssetRequest) {
+          // Store error as API call (only for non-asset and non-Cloudflare requests to avoid spam)
+          const isAssetRequest = /\.(css|js|woff|woff2|ttf|eot|png|jpg|jpeg|gif|svg|ico|webp)$/i.test(targetPath);
+          const targetPathLower = targetPath.toLowerCase();
+          const isCloudflareRequest = targetPathLower.includes('/cdn-cgi/') ||
+                                      targetPathLower.includes('cloudflare') ||
+                                      targetPathLower.includes('cf-');
+          if (!isAssetRequest && !isCloudflareRequest) {
         try {
           await prisma.apiCall.create({
             data: {
