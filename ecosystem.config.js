@@ -20,6 +20,26 @@ module.exports = {
       min_uptime: '10s',
       max_memory_restart: '1G',
     },
+    {
+      name: 'api-discovery-ws',
+      script: 'npm',
+      args: 'run ws:server',
+      cwd: '/home/hendo420/api-discovery',
+      instances: 1,
+      exec_mode: 'fork',
+      env: {
+        NODE_ENV: 'production',
+        WEBSOCKET_PORT: process.env.WEBSOCKET_PORT || '3001',
+      },
+      error_file: './logs/pm2-ws-error.log',
+      out_file: './logs/pm2-ws-out.log',
+      log_file: './logs/pm2-ws-combined.log',
+      time: true,
+      autorestart: true,
+      max_restarts: 10,
+      min_uptime: '10s',
+      max_memory_restart: '500M',
+    },
   ],
 };
 
