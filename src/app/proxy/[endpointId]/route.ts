@@ -414,78 +414,128 @@ function injectApiInterceptor(html: string, endpointId: string): string {
   const originalWebSocket = window.WebSocket;
   console.log('[API Discovery Proxy] Installing WebSocket interceptor, original WebSocket:', originalWebSocket);
   
-  window.WebSocket = function(url, protocols) {
-    console.log('[API Discovery Proxy] WebSocket constructor called:', url, protocols);
+  // Create a wrapper function that intercepts all WebSocket creation
+  const WebSocketProxy = function(this: any, url: string | URL, protocols?: string | string[]) {
+    console.log('[API Discovery Proxy] WebSocket constructor called:', url, protocols, 'type:', typeof url);
     
     try {
       let targetUrl: string;
-      let proxiedUrl: string;
       
-      // Handle both absolute (ws://, wss://) and relative URLs
+      // Handle both string URLs and URL objects
       if (typeof url === 'string') {
         if (url.startsWith('ws://') || url.startsWith('wss://')) {
           // Absolute WebSocket URL
           targetUrl = url;
         } else if (url.startsWith('/')) {
-          // Relative URL - construct absolute URL from current page
+          // Relative URL starting with / - construct from current page origin
+          // Get the original destination from the page (it should be proxied, so we need to infer)
+          // For relative URLs, we'll construct based on the current page's origin
+          // Since we're proxying, the original destination should be in the referer or we can use a fallback
           const currentProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-          const currentHost = window.location.hostname;
-          // Try to get the port from the original destination (might be in a cookie or we can infer from protocol)
-          // For now, use the same hostname and infer protocol
-          targetUrl = currentProtocol + '//' + currentHost + (url.startsWith('/') ? url : '/' + url);
+          // Try to get original host from document.referrer or use current host as fallback
+          let originalHost = window.location.hostname;
+          try {
+            const referer = document.referrer;
+            if (referer) {
+              const refererUrl = new URL(referer);
+              // If referer is our proxy, we need to get the original destination
+              // For now, use a heuristic: if it's a known domain pattern, use it
+              // Otherwise, construct from the current proxy context
+              originalHost = refererUrl.hostname;
+            }
+          } catch (e) {
+            // Ignore referer parsing errors
+          }
+          targetUrl = currentProtocol + '//' + originalHost + url;
         } else {
           // Relative URL without leading slash - treat as path
           const currentProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-          const currentHost = window.location.hostname;
-          targetUrl = currentProtocol + '//' + currentHost + '/' + url;
+          let originalHost = window.location.hostname;
+          try {
+            const referer = document.referrer;
+            if (referer) {
+              const refererUrl = new URL(referer);
+              originalHost = refererUrl.hostname;
+            }
+          } catch (e) {
+            // Ignore
+          }
+          targetUrl = currentProtocol + '//' + originalHost + '/' + url;
         }
-        
-        // Parse the target URL to get components
-        const urlObj = new URL(targetUrl);
-        const fullPath = urlObj.pathname + (urlObj.search || '');
-        
-        // Rewrite to use our WebSocket proxy
-        // Use the same host but port 3001 for WebSocket server
-        const wsHost = (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + window.location.hostname + ':3001';
-        // Pass the original URL as a query parameter so our proxy knows where to connect
-        proxiedUrl = wsHost + '/ws-proxy' + fullPath + (urlObj.search ? '&' : '?') + 'endpointId=' + endpointId + '&originalUrl=' + encodeURIComponent(targetUrl);
-        console.log('[API Discovery Proxy] Proxying WebSocket:', url, '->', proxiedUrl, '(target:', targetUrl + ')');
-        const ws = new originalWebSocket(proxiedUrl, protocols);
-        
-        // Log WebSocket events for debugging
-        ws.addEventListener('open', () => console.log('[API Discovery Proxy] WebSocket opened:', proxiedUrl));
-        ws.addEventListener('error', (e) => console.error('[API Discovery Proxy] WebSocket error:', e, proxiedUrl, 'target:', targetUrl));
-        ws.addEventListener('close', (e) => console.log('[API Discovery Proxy] WebSocket closed:', e.code, e.reason, proxiedUrl));
-        
-        return ws;
+      } else if (url instanceof URL) {
+        // URL object - convert to string
+        targetUrl = url.href;
       } else {
-        // Non-string URL (shouldn't happen, but handle it)
-        console.warn('[API Discovery Proxy] Non-string WebSocket URL:', url);
-        return new originalWebSocket(url as any, protocols);
+        // Unknown type - try to convert to string
+        targetUrl = String(url);
       }
+      
+      // Parse the target URL to get components
+      const urlObj = new URL(targetUrl);
+      const fullPath = urlObj.pathname + (urlObj.search || '');
+      
+      // Rewrite to use our WebSocket proxy
+      // Use the same host but port 3001 for WebSocket server
+      const wsHost = (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + window.location.hostname + ':3001';
+      // Pass the original URL as a query parameter so our proxy knows where to connect
+      const proxiedUrl = wsHost + '/ws-proxy' + fullPath + (urlObj.search ? '&' : '?') + 'endpointId=' + endpointId + '&originalUrl=' + encodeURIComponent(targetUrl);
+      console.log('[API Discovery Proxy] Proxying WebSocket:', url, '->', proxiedUrl, '(target:', targetUrl + ')');
+      const ws = new originalWebSocket(proxiedUrl, protocols);
+      
+      // Log WebSocket events for debugging
+      ws.addEventListener('open', () => {
+        console.log('[API Discovery Proxy] WebSocket opened successfully:', proxiedUrl, 'target:', targetUrl);
+      });
+      ws.addEventListener('error', (e) => {
+        console.error('[API Discovery Proxy] WebSocket error:', e, 'proxiedUrl:', proxiedUrl, 'target:', targetUrl);
+        console.error('[API Discovery Proxy] WebSocket error details:', {
+          readyState: ws.readyState,
+          url: ws.url,
+          protocol: ws.protocol,
+        });
+      });
+      ws.addEventListener('close', (e) => {
+        console.log('[API Discovery Proxy] WebSocket closed:', {
+          code: e.code,
+          reason: e.reason,
+          wasClean: e.wasClean,
+          proxiedUrl,
+          target: targetUrl,
+        });
+      });
+      
+      return ws;
     } catch (e) {
-      console.error('[API Discovery Proxy] Failed to proxy WebSocket URL:', e, url);
+      console.error('[API Discovery Proxy] Failed to proxy WebSocket URL:', e, 'url:', url, 'stack:', e instanceof Error ? e.stack : 'no stack');
       // Fall back to original if rewriting fails
-      return new originalWebSocket(url as any, protocols);
+      try {
+        return new originalWebSocket(url as any, protocols);
+      } catch (fallbackError) {
+        console.error('[API Discovery Proxy] Fallback WebSocket creation also failed:', fallbackError);
+        throw fallbackError;
+      }
     }
-  };
+  } as any;
   
   // Preserve WebSocket static properties and prototype
-  Object.setPrototypeOf(window.WebSocket, originalWebSocket);
-  Object.setPrototypeOf(window.WebSocket.prototype, originalWebSocket.prototype);
+  Object.setPrototypeOf(WebSocketProxy, originalWebSocket);
+  Object.setPrototypeOf(WebSocketProxy.prototype, originalWebSocket.prototype);
   
   // Copy static properties
   Object.getOwnPropertyNames(originalWebSocket).forEach(prop => {
     if (prop !== 'prototype' && prop !== 'length' && prop !== 'name') {
       try {
-        window.WebSocket[prop] = originalWebSocket[prop];
+        (WebSocketProxy as any)[prop] = (originalWebSocket as any)[prop];
       } catch (e) {
         // Ignore read-only properties
       }
     }
   });
   
-  console.log('[API Discovery Proxy] WebSocket interceptor installed successfully');
+  // Replace window.WebSocket
+  window.WebSocket = WebSocketProxy as any;
+  
+  console.log('[API Discovery Proxy] WebSocket interceptor installed successfully, window.WebSocket:', window.WebSocket);
   
   // Throttle logging to prevent excessive API calls
   let lastLogTime = 0;
