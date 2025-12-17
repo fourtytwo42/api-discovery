@@ -5,6 +5,8 @@ const groq = new Groq({
 });
 
 const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
+// Groq GPT OSS 20B supports up to 8192 tokens context window
+// Default to 2000 for general use, but can be overridden up to 8000 for documentation generation
 const GROQ_MAX_TOKENS = parseInt(process.env.GROQ_MAX_TOKENS || '2000', 10);
 const GROQ_TEMPERATURE = parseFloat(process.env.GROQ_TEMPERATURE || '0.3');
 

@@ -58,3 +58,48 @@ export function normalizeUrlForGrouping(url: string): string {
   }
 }
 
+/**
+ * Normalize URL to pattern by replacing dynamic IDs with :param
+ * Examples:
+ * /api/users/123 -> /api/users/:id
+ * /api/products/a1b2c3d4-e5f6-7890-1234-567890abcdef -> /api/products/:id
+ * /api/tokens/7Tx8qTXSakpfaSFjdztPGQ9n2uyT1eUkYz7gYxxopump/metadata -> /api/tokens/:id/metadata
+ */
+export function normalizeUrlPattern(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    let path = urlObj.pathname;
+
+    // Remove trailing slash for consistent patterns, unless it's the root path
+    if (path.length > 1 && path.endsWith('/')) {
+      path = path.slice(0, -1);
+    }
+
+    // Replace UUIDs (e.g., a1b2c3d4-e5f6-7890-1234-567890abcdef) with :id
+    path = path.replace(
+      /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi,
+      ':id'
+    );
+
+    // Replace CUIDs (e.g., clx01z000000008l400000000) with :id
+    path = path.replace(/cl[a-z0-9]{25}/g, ':id');
+
+    // Replace numeric IDs (e.g., /123, /users/456/posts) with :id
+    // Ensure it's a full path segment to avoid replacing parts of words
+    path = path.replace(/\/\d+(\/|$)/g, '/:id$1');
+    // Handle numeric ID at the very end of the path
+    path = path.replace(/\/\d+$/, '/:id');
+
+    // Replace long hexadecimal strings (e.g., Solana token addresses, Ethereum hashes) with :id
+    // This regex looks for segments that are purely hex characters and are reasonably long (e.g., 20+ chars)
+    path = path.replace(/\/[0-9a-fA-F]{20,}(\/|$)/g, '/:id$1');
+    path = path.replace(/\/[0-9a-fA-F]{20,}$/g, '/:id');
+
+    return path;
+  } catch (e) {
+    // If URL parsing fails (e.g., malformed URL), return the original URL
+    console.warn('Failed to normalize URL pattern:', url, e);
+    return url;
+  }
+}
+

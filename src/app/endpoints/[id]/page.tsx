@@ -7,6 +7,7 @@ import { prisma } from '@/lib/database/prisma';
 import { verifyToken } from '@/lib/auth/jwt';
 import ProxyUrlDisplay from '@/components/endpoints/ProxyUrlDisplay';
 import ApiCallList from '@/components/endpoints/ApiCallList';
+import GenerateDocumentationButton from '@/components/endpoints/GenerateDocumentationButton';
 
 async function getEndpoint(id: string) {
   try {
@@ -98,7 +99,10 @@ export default async function EndpointDetailPage({
           </div>
 
           <div className="mb-6">
-            <h2 className="text-xl font-semibold mb-4">Documentation</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Documentation</h2>
+              <GenerateDocumentationButton endpointId={id} />
+            </div>
             <DocumentationViewer endpointId={id} />
           </div>
         </div>
