@@ -1,5 +1,5 @@
 import { WebSocketServer, WebSocket } from 'ws';
-import { IncomingMessage } from 'http';
+import type { IncomingMessage } from 'http';
 import { parse } from 'url';
 import { prisma } from '@/lib/database/prisma';
 import { validateProxyUrl } from '@/lib/proxy/validation';
