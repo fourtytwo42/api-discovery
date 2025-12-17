@@ -127,7 +127,10 @@ export async function GET(
     const endpoint = await prisma.endpoint.findUnique({
       where: { id },
       include: {
-        endpointDocs: true,
+        endpointDocs: {
+          take: 1,
+          orderBy: { generatedAt: 'desc' },
+        },
       },
     });
 
