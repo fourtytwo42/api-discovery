@@ -96,26 +96,70 @@ async function handleProxyRequest(
     const targetUrlObj = new URL(targetUrl);
 
     try {
-      const response = await fetch(targetUrl, {
-        method,
-        headers: Object.fromEntries(request.headers.entries()),
-        body: method !== 'GET' && method !== 'HEAD' ? await request.text() : undefined,
+      // Prepare headers (exclude problematic headers)
+      const headers: Record<string, string> = {};
+      request.headers.forEach((value, key) => {
+        const lowerKey = key.toLowerCase();
+        if (!['host', 'connection', 'content-length', 'transfer-encoding', 'upgrade', 'proxy-connection', 'proxy-authorization'].includes(lowerKey)) {
+          headers[key] = value;
+        }
       });
 
-      const responseBody = await response.text();
+      // Add proper User-Agent if not present
+      if (!headers['User-Agent']) {
+        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+      }
+
+      // Get request body for fetch (if not already read)
+      let fetchBody: string | undefined;
+      if (method !== 'GET' && method !== 'HEAD') {
+        fetchBody = await request.text();
+      }
+
+      const response = await fetch(targetUrl, {
+        method,
+        headers,
+        body: fetchBody,
+        redirect: 'follow',
+      });
+
+      const contentType = response.headers.get('Content-Type') || '';
+      const isBinary = /^(image|font|audio|video|application\/octet-stream|application\/pdf)/i.test(contentType);
+      const isAsset = /\.(css|js|woff|woff2|ttf|eot|otf|png|jpg|jpeg|gif|svg|ico|webp|mp4|mp3|pdf)$/i.test(targetPath);
+      
+      // Get response body as appropriate type
+      let responseBody: string | ArrayBuffer;
+      let responseBodyText: string | undefined;
+      let responseBodyJson: unknown;
+      
+      if (isBinary || isAsset) {
+        // For binary content, get as ArrayBuffer
+        responseBody = await response.arrayBuffer();
+        responseBodyText = undefined;
+      } else {
+        // For text content, get as text
+        responseBodyText = await response.text();
+        responseBody = responseBodyText;
+        
+        // Try to parse as JSON
+        try {
+          responseBodyJson = JSON.parse(responseBodyText);
+        } catch {
+          responseBodyJson = undefined;
+        }
+      }
+
       const responseHeaders: Record<string, string> = {};
       response.headers.forEach((value, key) => {
         responseHeaders[key] = value;
       });
 
-      // Capture API call - read request body before it's consumed
-      let requestBody: string | undefined;
-      let requestBodyJson: unknown;
-      if (method !== 'GET' && method !== 'HEAD') {
-        try {
-          // Clone request to read body
-          const clonedRequest = request.clone();
-          requestBody = await clonedRequest.text();
+      // Capture API call - only for non-asset requests
+      if (!isAsset) {
+        let requestBody: string | undefined;
+        let requestBodyJson: unknown;
+        if (method !== 'GET' && method !== 'HEAD') {
+          requestBody = fetchBody;
           if (requestBody) {
             try {
               requestBodyJson = JSON.parse(requestBody);
@@ -123,43 +167,39 @@ async function handleProxyRequest(
               requestBodyJson = undefined;
             }
           }
-        } catch {
-          requestBodyJson = undefined;
         }
-      }
 
-      const capturedRequest = {
-        method,
-        url: targetUrl,
-        headers: Object.fromEntries(request.headers.entries()),
-        queryParams: Object.fromEntries(request.nextUrl.searchParams.entries()),
-      };
-
-      let responseBodyJson: unknown;
-      try {
-        responseBodyJson = JSON.parse(responseBody);
-      } catch {
-        responseBodyJson = undefined;
-      }
-
-      // Store captured call
-      await prisma.apiCall.create({
-        data: {
-          endpointId,
+        const capturedRequest = {
           method,
           url: targetUrl,
-          protocol: targetUrlObj.protocol.replace(':', ''),
-          requestHeaders: capturedRequest.headers,
-          requestBody: requestBody?.substring(0, 50000), // Truncate if too large
-          requestBodyJson: requestBodyJson ? (requestBodyJson as Prisma.InputJsonValue) : undefined,
-          queryParams: capturedRequest.queryParams ? (capturedRequest.queryParams as Prisma.InputJsonValue) : undefined,
-          responseStatus: response.status,
-          responseHeaders: responseHeaders,
-          responseBody: responseBody.substring(0, 50000), // Truncate if too large
-          responseBodyJson: responseBodyJson ? (responseBodyJson as Prisma.InputJsonValue) : undefined,
-          duration: Date.now() - startTime,
-        },
-      });
+          headers: Object.fromEntries(request.headers.entries()),
+          queryParams: Object.fromEntries(request.nextUrl.searchParams.entries()),
+        };
+
+        // Store captured call (skip for assets to avoid binary data issues)
+        try {
+          await prisma.apiCall.create({
+            data: {
+              endpointId,
+              method,
+              url: targetUrl,
+              protocol: targetUrlObj.protocol.replace(':', ''),
+              requestHeaders: capturedRequest.headers,
+              requestBody: requestBody?.substring(0, 50000),
+              requestBodyJson: requestBodyJson ? (requestBodyJson as Prisma.InputJsonValue) : undefined,
+              queryParams: capturedRequest.queryParams ? (capturedRequest.queryParams as Prisma.InputJsonValue) : undefined,
+              responseStatus: response.status,
+              responseHeaders: responseHeaders,
+              responseBody: responseBodyText?.substring(0, 50000),
+              responseBodyJson: responseBodyJson ? (responseBodyJson as Prisma.InputJsonValue) : undefined,
+              duration: Date.now() - startTime,
+            },
+          });
+        } catch (dbError) {
+          // Log but don't fail the request if DB insert fails
+          console.error('Failed to store API call:', dbError);
+        }
+      }
 
       // Filter response headers (remove problematic ones)
       const filteredHeaders: Record<string, string> = {};
